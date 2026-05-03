@@ -35,13 +35,16 @@ export async function persistStreamResults(
   // Ensure the initial chat/message persistence finished before saving the response
   if (initialSavePromise) {
     const initialSaveStart = performance.now()
+
     try {
       await initialSavePromise
       perfTime('initial chat persistence awaited', initialSaveStart)
     } catch (error) {
       console.error('Initial chat persistence failed:', error)
+
       if (initialUserMessage) {
         const fallbackStart = performance.now()
+
         try {
           await createChatWithFirstMessage(
             chatId,
@@ -49,25 +52,27 @@ export async function persistStreamResults(
             userId,
             DEFAULT_CHAT_TITLE
           )
-          perfTime('initial chat persistence fallback completed', fallbackStart)
+
+          perfTime(
+            'initial chat persistence fallback completed',
+            fallbackStart
+          )
         } catch (fallbackError) {
-          // Check if the error is due to duplicate key (chat already exists)
           const isDuplicateKey =
             fallbackError instanceof Error &&
             (fallbackError.message.includes('duplicate key') ||
               fallbackError.message.includes('unique constraint'))
 
           if (isDuplicateKey) {
-            // Chat already exists, this is fine - continue to save the response message
             console.log(
               'Chat already exists (duplicate key), continuing with response save'
             )
+
             perfTime(
               'initial chat persistence - duplicate detected',
               fallbackStart
             )
           } else {
-            // Other error - log and return
             console.error('Fallback chat creation failed:', fallbackError)
             return
           }
@@ -78,32 +83,47 @@ export async function persistStreamResults(
     }
   }
 
-  // Save message with retry logic
+  // Save AI response message
   const saveStart = performance.now()
+
   try {
-    await upsertMessage(chatId, responseMessage, userId)
+    await upsertMessage(
+      {
+        ...responseMessage,
+        chatId
+      },
+      userId
+    )
+
     perfTime('upsertMessage (AI response) completed', saveStart)
   } catch (error) {
     console.error('Error saving message:', error)
+
     try {
       await retryDatabaseOperation(
-        () => upsertMessage(chatId, responseMessage, userId),
+        () =>
+          upsertMessage(
+            {
+              ...responseMessage,
+              chatId
+            },
+            userId
+          ),
         'save message'
       )
+
       perfTime('upsertMessage (AI response) completed after retry', saveStart)
     } catch (retryError) {
       console.error('Failed to save after retries:', retryError)
-      // Don't throw here to avoid breaking the stream
     }
   }
 
-  // Update title after message is saved
+  // Update title after save
   if (chatTitle && chatTitle !== DEFAULT_CHAT_TITLE) {
     try {
       await updateChatTitle(chatId, chatTitle, userId)
     } catch (error) {
       console.error('Error updating title:', error)
-      // Don't throw here as title update is not critical
     }
   }
 }
