@@ -21,7 +21,7 @@ export async function persistStreamResults(
   >,
   initialUserMessage?: UIMessage
 ) {
-  // Attach metadata to the response message
+  // Attach metadata to response message
   responseMessage.metadata = {
     ...(responseMessage.metadata || {}),
     ...(parentTraceId && { traceId: parentTraceId }),
@@ -29,10 +29,10 @@ export async function persistStreamResults(
     ...(modelId && { modelId })
   }
 
-  // Wait for title generation if it was started
+  // Wait for title generation
   const chatTitle = titlePromise ? await titlePromise : undefined
 
-  // Ensure the initial chat/message persistence finished before saving the response
+  // Ensure initial chat creation completed
   if (initialSavePromise) {
     const initialSaveStart = performance.now()
 
@@ -69,7 +69,7 @@ export async function persistStreamResults(
             )
 
             perfTime(
-              'initial chat persistence - duplicate detected',
+              'initial chat persistence duplicate handled',
               fallbackStart
             )
           } else {
@@ -87,38 +87,25 @@ export async function persistStreamResults(
   const saveStart = performance.now()
 
   try {
-    await upsertMessage(
-      {
-        ...responseMessage,
-        chatId
-      },
-      userId
-    )
+    await upsertMessage(chatId, responseMessage, userId)
 
-    perfTime('upsertMessage (AI response) completed', saveStart)
+    perfTime('upsertMessage completed', saveStart)
   } catch (error) {
     console.error('Error saving message:', error)
 
     try {
       await retryDatabaseOperation(
-        () =>
-          upsertMessage(
-            {
-              ...responseMessage,
-              chatId
-            },
-            userId
-          ),
+        () => upsertMessage(chatId, responseMessage, userId),
         'save message'
       )
 
-      perfTime('upsertMessage (AI response) completed after retry', saveStart)
+      perfTime('upsertMessage retry completed', saveStart)
     } catch (retryError) {
       console.error('Failed to save after retries:', retryError)
     }
   }
 
-  // Update title after save
+  // Update title if generated
   if (chatTitle && chatTitle !== DEFAULT_CHAT_TITLE) {
     try {
       await updateChatTitle(chatId, chatTitle, userId)
