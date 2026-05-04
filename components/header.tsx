@@ -32,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
       {/* Center - "Made by" credit */}
       <div className="absolute left-1/2 transform -translate-x-1/2">
         <span className="text-sm text-muted-foreground font-medium">
-          Made by Siddhant Ray
+          Made by Siddhant Ray ❤
         </span>
       </div>
 
