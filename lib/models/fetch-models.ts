@@ -1,3 +1,6 @@
+import { createGroq } from '@ai-sdk/groq'
+import { createAnthropic } from '@ai-sdk/anthropic'
+
 import { createGateway } from '@ai-sdk/gateway'
 
 import { Model } from '@/lib/types/models'
