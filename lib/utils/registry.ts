@@ -2,14 +2,21 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { createGateway } from '@ai-sdk/gateway'
 import { google } from '@ai-sdk/google'
 import { createOpenAI, openai } from '@ai-sdk/openai'
+import { createGroq } from '@ai-sdk/groq'
 import { createProviderRegistry, LanguageModel } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 
-// Build providers object conditionally
+// ✅ ADD GROQ PROVIDER
+const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY
+})
+
+// Build providers object
 const providers: Record<string, any> = {
   openai,
   anthropic,
   google,
+  groq, // ✅ VERY IMPORTANT
   'openai-compatible': createOpenAI({
     apiKey: process.env.OPENAI_COMPATIBLE_API_KEY,
     baseURL: process.env.OPENAI_COMPATIBLE_API_BASE_URL
@@ -19,7 +26,7 @@ const providers: Record<string, any> = {
   })
 }
 
-// Only add Ollama if OLLAMA_BASE_URL is configured
+// Ollama (optional)
 const ollamaProvider = process.env.OLLAMA_BASE_URL
   ? createOllama({ baseURL: process.env.OLLAMA_BASE_URL })
   : null
@@ -31,15 +38,11 @@ if (ollamaProvider) {
 export const registry = createProviderRegistry(providers)
 
 export function getModel(model: string): LanguageModel {
-  // For Ollama models, bypass the registry to pass model-level settings
-  // that ai-sdk-ollama requires (think, supportedUrls override).
+  // Ollama special handling
   if (model.startsWith('ollama:') && ollamaProvider) {
     const modelId = model.slice('ollama:'.length)
     const lm = ollamaProvider(modelId, { think: true })
 
-    // Ollama's Chat API only accepts base64 in the images field, not URLs.
-    // Override supportedUrls to force AI SDK to download images and convert
-    // them to base64 before sending to the model.
     Object.defineProperty(lm, 'supportedUrls', {
       value: {},
       configurable: true
@@ -53,6 +56,7 @@ export function getModel(model: string): LanguageModel {
   )
 }
 
+// ✅ ENABLE PROVIDERS HERE
 export function isProviderEnabled(providerId: string): boolean {
   switch (providerId) {
     case 'openai':
@@ -61,6 +65,8 @@ export function isProviderEnabled(providerId: string): boolean {
       return !!process.env.ANTHROPIC_API_KEY
     case 'google':
       return !!process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    case 'groq': // ✅ ADD THIS
+      return !!process.env.GROQ_API_KEY
     case 'openai-compatible':
       return (
         !!process.env.OPENAI_COMPATIBLE_API_KEY &&
