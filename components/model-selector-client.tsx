@@ -29,6 +29,17 @@ function modelKey(model: Model): string {
   return `${model.providerId}:${model.id}`
 }
 
+function getModelDisplayName(model: Model): string {
+  // FIX [object Object] ERROR - Always return a string
+  if (typeof model.name === 'string' && model.name.trim()) {
+    return model.name
+  }
+  if (typeof model.id === 'string' && model.id.trim()) {
+    return model.id
+  }
+  return 'Unknown Model'
+}
+
 const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   openai: '/providers/logos/openai.svg',
   anthropic: '/providers/logos/anthropic.svg',
@@ -63,7 +74,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 }
 
 function categorizeModel(model: Model): string {
-  const name = model.name?.toLowerCase() || ''
+  const name = getModelDisplayName(model).toLowerCase()
   
   if (
     name.includes('instant') ||
@@ -71,19 +82,19 @@ function categorizeModel(model: Model): string {
     name.includes('lite') ||
     name.includes('mini') ||
     name.includes('8b') ||
-    name.includes('haiku')
+    name.includes('haiku') ||
+    name.includes('3.5')
   ) {
     return 'Fast Tasks'
   }
   
   if (
-    name.includes('gpt-5') ||
-    name.includes('gpt-4o') ||
+    name.includes('gpt-4') ||
     name.includes('claude') ||
     name.includes('pro') ||
     name.includes('opus') ||
-    name.includes('2.5-pro') ||
-    name.includes('3-flash')
+    name.includes('70b') ||
+    name.includes('turbo')
   ) {
     return 'Complex Tasks'
   }
@@ -166,6 +177,8 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
     return null
   }
 
+  const selectedModelName = getModelDisplayName(selectedModel)
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -177,7 +190,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
         >
           <ProviderLogo providerId={selectedModel.providerId} />
           <span className="truncate max-w-40 text-xs font-medium">
-            {selectedModel.name || selectedModel.id}
+            {selectedModelName}
           </span>
           <ChevronDown
             className={cn(
@@ -229,10 +242,11 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                     {models.map(model => {
                       const value = modelKey(model)
                       const isSelected = selectedModelKey === value
+                      const displayName = getModelDisplayName(model)
                       return (
                         <CommandItem
                           key={value}
-                          value={`${value} ${model.name || model.id}`}
+                          value={`${value} ${displayName}`}
                           onSelect={() => {
                             const nextModel = selectableByKey[value]
                             if (!nextModel) return
@@ -256,7 +270,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                             )}
                           />
                           <ProviderLogo providerId={model.providerId} />
-                          <span className="truncate">{model.name || model.id}</span>
+                          <span className="truncate">{displayName}</span>
                         </CommandItem>
                       )
                     })}
@@ -269,10 +283,11 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                   {models.map(model => {
                     const value = modelKey(model)
                     const isSelected = selectedModelKey === value
+                    const displayName = getModelDisplayName(model)
                     return (
                       <CommandItem
                         key={value}
-                        value={`${value} ${model.name || model.id} ${provider}`}
+                        value={`${value} ${displayName} ${provider}`}
                         onSelect={() => {
                           const nextModel = selectableByKey[value]
                           if (!nextModel) return
@@ -296,7 +311,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                           )}
                         />
                         <ProviderLogo providerId={model.providerId} />
-                        <span className="truncate">{model.name || model.id}</span>
+                        <span className="truncate">{displayName}</span>
                       </CommandItem>
                     )
                   })}
