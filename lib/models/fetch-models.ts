@@ -36,131 +36,63 @@ function groupByProvider(models: Model[]): ModelsByProvider {
 }
 
 //
-// ✅ OPENAI (clean only working models)
+// ✅ OPENAI (clean + stable)
 //
 export async function fetchOpenAIModels(): Promise<Model[]> {
   if (!isProviderEnabled('openai')) return []
 
   return [
-    {
-      id: 'gpt-4o',
-      name: 'GPT-4o',
-      provider: 'OpenAI',
-      providerId: 'openai'
-    },
-    {
-      id: 'gpt-4o-mini',
-      name: 'GPT-4o Mini',
-      provider: 'OpenAI',
-      providerId: 'openai'
-    }
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', providerId: 'openai' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', providerId: 'openai' },
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI', providerId: 'openai' },
+    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI', providerId: 'openai' }
   ]
 }
 
 //
-// ✅ GOOGLE (ONLY WORKING MODELS)
+// ✅ GOOGLE (ONLY WORKING — no discontinued)
 //
 export async function fetchGoogleModels(): Promise<Model[]> {
   if (!isProviderEnabled('google')) return []
 
   return [
-    {
-      id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash',
-      provider: 'Google',
-      providerId: 'google'
-    },
-    {
-      id: 'gemini-2.5-flash-lite',
-      name: 'Gemini 2.5 Flash Lite',
-      provider: 'Google',
-      providerId: 'google'
-    },
-    {
-      id: 'gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro',
-      provider: 'Google',
-      providerId: 'google'
-    },
-    {
-      id: 'gemini-3-flash-preview',
-      name: 'Gemini 3 Flash Preview',
-      provider: 'Google',
-      providerId: 'google'
-    },
-    {
-      id: 'gemini-3.1-flash-lite-preview',
-      name: 'Gemini 3.1 Flash Lite',
-      provider: 'Google',
-      providerId: 'google'
-    }
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', providerId: 'google' },
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'Google', providerId: 'google' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', providerId: 'google' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', provider: 'Google', providerId: 'google' },
+    { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', provider: 'Google', providerId: 'google' }
   ]
 }
 
 //
-// ✅ GROQ (HARDCODE — REQUIRED)
+// ✅ GROQ (ONLY WORKING MODELS — FIXED)
 //
 export async function fetchGroqModels(): Promise<Model[]> {
   if (!isProviderEnabled('groq')) return []
 
   return [
-    {
-      id: 'llama-3.3-70b-versatile',
-      name: 'Llama 3.3 70B',
-      provider: 'Groq',
-      providerId: 'groq'
-    },
-    {
-      id: 'llama-3.1-70b-versatile',
-      name: 'Llama 3.1 70B',
-      provider: 'Groq',
-      providerId: 'groq'
-    },
-    {
-      id: 'mixtral-8x7b-32768',
-      name: 'Mixtral 8x7B',
-      provider: 'Groq',
-      providerId: 'groq'
-    },
-    {
-      id: 'gemma2-9b-it',
-      name: 'Gemma 2 9B',
-      provider: 'Groq',
-      providerId: 'groq'
-    }
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', providerId: 'groq' },
+    { id: 'llama-3.3-8b-instant', name: 'Llama 3.3 8B Fast', provider: 'Groq', providerId: 'groq' },
+    { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', provider: 'Groq', providerId: 'groq' },
+    { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision', provider: 'Groq', providerId: 'groq' }
   ]
 }
 
 //
-// ✅ ANTHROPIC (CLEAN)
+// ✅ ANTHROPIC (clean)
 //
 export async function fetchAnthropicModels(): Promise<Model[]> {
   if (!isProviderEnabled('anthropic')) return []
 
   return [
-    {
-      id: 'claude-sonnet-4',
-      name: 'Claude Sonnet 4',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
-    },
-    {
-      id: 'claude-opus-4',
-      name: 'Claude Opus 4',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
-    },
-    {
-      id: 'claude-haiku-4',
-      name: 'Claude Haiku 4',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
-    }
+    { id: 'claude-sonnet-4', name: 'Claude Sonnet 4', provider: 'Anthropic', providerId: 'anthropic' },
+    { id: 'claude-opus-4', name: 'Claude Opus 4', provider: 'Anthropic', providerId: 'anthropic' },
+    { id: 'claude-haiku-4', name: 'Claude Haiku 4', provider: 'Anthropic', providerId: 'anthropic' }
   ]
 }
 
 //
-// ✅ GATEWAY (OPTIONAL)
+// ✅ GATEWAY (optional)
 //
 export async function fetchGatewayModels(): Promise<Model[]> {
   if (!isProviderEnabled('gateway')) return []
@@ -203,7 +135,13 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
     ])
 
   const grouped = groupByProvider(
-    dedupeModels([...openai, ...google, ...groq, ...anthropic, ...gateway])
+    dedupeModels([
+      ...openai,
+      ...google,
+      ...groq,
+      ...anthropic,
+      ...gateway
+    ])
   )
 
   const normalized = Object.fromEntries(
