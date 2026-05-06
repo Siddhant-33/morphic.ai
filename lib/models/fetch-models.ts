@@ -1,6 +1,5 @@
 import { createGroq } from '@ai-sdk/groq'
 import { createAnthropic } from '@ai-sdk/anthropic'
-
 import { createGateway } from '@ai-sdk/gateway'
 
 import { Model } from '@/lib/types/models'
@@ -8,10 +7,13 @@ import { isProviderEnabled } from '@/lib/utils/registry'
 
 export type ModelsByProvider = Record<string, Model[]>
 
+// ✅ CLEAN MODELS
+const OPENAI_ALLOWED_PREFIXES = ['gpt-5', 'gpt-4']
+const GOOGLE_ALLOWED_PREFIXES = ['gemini-2.5', 'gemini-3']
+
 const MODEL_CACHE_TTL_MS = 2 * 60 * 1000
 const DATE_SNAPSHOT_SUFFIX_REGEX = /-\d{4}-\d{2}-\d{2}$/
-const GOOGLE_PREVIEW_SNAPSHOT_REGEX = /preview-\d{2}-\d{2,4}$/i
-const OPENAI_ALLOWED_PREFIXES = ['gpt-5', 'o1', 'o3', 'o4']
+
 const OPENAI_EXCLUDED_KEYWORDS = [
   'embed',
   'tts',
@@ -28,16 +30,14 @@ const OPENAI_EXCLUDED_KEYWORDS = [
   'transcribe',
   'deep-research',
   'oss',
-  'instruct',
-  'chat-latest'
+  'instruct'
 ]
+
 const ANTHROPIC_ALLOWED_PREFIXES = [
   'claude-opus-4',
   'claude-sonnet-4',
   'claude-haiku-4'
 ]
-const GOOGLE_ALLOWED_PREFIXES = ['gemini-2.5', 'gemini-3']
-const GOOGLE_EXCLUDED_KEYWORDS = ['image', 'live', 'native-audio', 'embedding']
 
 let modelsCache:
   | {
@@ -56,10 +56,7 @@ function dedupeModels(models: Model[]): Model[] {
 
   for (const model of models) {
     const key = `${model.provider}|${model.providerId}|${model.id}`
-    if (seen.has(key)) {
-      continue
-    }
-
+    if (seen.has(key)) continue
     seen.add(key)
     deduped.push(model)
   }
@@ -69,74 +66,54 @@ function dedupeModels(models: Model[]): Model[] {
 
 function groupByProvider(models: Model[]): ModelsByProvider {
   return models.reduce<ModelsByProvider>((acc, model) => {
-    const key = model.provider
-    if (!acc[key]) {
-      acc[key] = []
-    }
-    acc[key].push(model)
+    if (!acc[model.provider]) acc[model.provider] = []
+    acc[model.provider].push(model)
     return acc
   }, {})
 }
 
-function hasDateSnapshotSuffix(modelId: string): boolean {
-  return DATE_SNAPSHOT_SUFFIX_REGEX.test(modelId)
+function hasDateSnapshotSuffix(id: string): boolean {
+  return DATE_SNAPSHOT_SUFFIX_REGEX.test(id)
 }
 
 function passesOpenAIFilters(id: string): boolean {
-  if (hasDateSnapshotSuffix(id)) {
-    return false
-  }
+  if (hasDateSnapshotSuffix(id)) return false
 
-  if (!OPENAI_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) {
-    return false
-  }
+  if (!OPENAI_ALLOWED_PREFIXES.some(p => id.startsWith(p))) return false
 
-  return !OPENAI_EXCLUDED_KEYWORDS.some(keyword =>
-    id.toLowerCase().includes(keyword)
+  return !OPENAI_EXCLUDED_KEYWORDS.some(k =>
+    id.toLowerCase().includes(k)
   )
 }
 
 function passesAnthropicFilters(id: string): boolean {
-  if (hasDateSnapshotSuffix(id)) {
-    return false
-  }
-
-  return ANTHROPIC_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))
+  if (hasDateSnapshotSuffix(id)) return false
+  return ANTHROPIC_ALLOWED_PREFIXES.some(p => id.startsWith(p))
 }
 
 function passesGoogleFilters(id: string): boolean {
-  if (hasDateSnapshotSuffix(id)) {
-    return false
-  }
+  if (hasDateSnapshotSuffix(id)) return false
 
-  if (GOOGLE_PREVIEW_SNAPSHOT_REGEX.test(id)) {
-    return false
-  }
+  const lower = id.toLowerCase()
 
-  if (!GOOGLE_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) {
-    return false
-  }
+  if (
+    lower.includes('image') ||
+    lower.includes('embedding') ||
+    lower.includes('audio') ||
+    lower.includes('vision')
+  ) return false
 
-  return !GOOGLE_EXCLUDED_KEYWORDS.some(keyword =>
-    id.toLowerCase().includes(keyword)
-  )
+  return GOOGLE_ALLOWED_PREFIXES.some(p => id.startsWith(p))
 }
 
 function passesGatewayFilters(id: string): boolean {
-  if (hasDateSnapshotSuffix(id)) {
-    return false
-  }
+  if (hasDateSnapshotSuffix(id)) return false
 
-  const separatorIndex = id.indexOf('/')
-  if (separatorIndex <= 0) {
-    return true
-  }
+  const i = id.indexOf('/')
+  if (i <= 0) return true
 
-  const provider = id.slice(0, separatorIndex)
-  const modelId = id.slice(separatorIndex + 1)
-  if (!modelId) {
-    return false
-  }
+  const provider = id.slice(0, i)
+  const modelId = id.slice(i + 1)
 
   switch (provider) {
     case 'openai':
@@ -150,35 +127,28 @@ function passesGatewayFilters(id: string): boolean {
   }
 }
 
-async function fetchJson(
-  url: string,
-  headers: HeadersInit
-): Promise<Record<string, any>> {
-  const response = await fetch(url, { headers, method: 'GET' })
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-  }
-  return (await response.json()) as Record<string, any>
+async function fetchJson(url: string, headers: HeadersInit) {
+  const res = await fetch(url, { headers })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
 }
 
+// 🔥 OPENAI
 export async function fetchOpenAIModels(): Promise<Model[]> {
-  if (!isProviderEnabled('openai')) {
-    return []
-  }
+  if (!isProviderEnabled('openai')) return []
 
   try {
     const json = await fetchJson('https://api.openai.com/v1/models', {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
     })
 
-    const data = Array.isArray(json?.data) ? json.data : []
     return sortModels(
       dedupeModels(
-        data
-          .map(item => String(item?.id ?? ''))
+        (json.data || [])
+          .map((i: any) => i.id)
           .filter(Boolean)
           .filter(passesOpenAIFilters)
-          .map(id => ({
+          .map((id: string) => ({
             id,
             name: id,
             provider: 'OpenAI',
@@ -186,230 +156,183 @@ export async function fetchOpenAIModels(): Promise<Model[]> {
           }))
       )
     )
-  } catch (error) {
-    console.warn('[ModelFetch] Failed to fetch OpenAI models:', error)
+  } catch {
     return []
   }
 }
 
+// 🔥 ANTHROPIC
 export async function fetchAnthropicModels(): Promise<Model[]> {
-  if (!isProviderEnabled('anthropic')) {
-    return []
-  }
+  if (!isProviderEnabled('anthropic')) return []
 
   try {
-    const models: Model[] = []
-    const baseUrl = 'https://api.anthropic.com/v1/models'
-    let afterId: string | undefined
-    let hasMore = true
-
-    while (hasMore) {
-      const url = new URL(baseUrl)
-      url.searchParams.set('limit', '100')
-      if (afterId) {
-        url.searchParams.set('after_id', afterId)
-      }
-
-      const json = await fetchJson(url.toString(), {
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01'
-      })
-
-      const data = Array.isArray(json?.data) ? json.data : []
-      models.push(
-        ...data
-          .map(item => {
-            const id = String(item?.id ?? '')
-            if (!id) return null
-            return {
-              id,
-              name: String(item?.display_name ?? id),
-              provider: 'Anthropic',
-              providerId: 'anthropic'
-            } satisfies Model
-          })
-          .filter((model): model is Model => model !== null)
-          .filter(model => passesAnthropicFilters(model.id))
-      )
-
-      hasMore = Boolean(json?.has_more)
-      afterId = typeof json?.last_id === 'string' ? json.last_id : undefined
-
-      if (!hasMore || !afterId) {
-        break
-      }
-    }
-
-    return sortModels(dedupeModels(models))
-  } catch (error) {
-    console.warn('[ModelFetch] Failed to fetch Anthropic models:', error)
-    return []
-  }
-}
-
-export async function fetchGoogleModels(): Promise<Model[]> {
-  if (!isProviderEnabled('google')) {
-    return []
-  }
-
-  try {
-    const models: Model[] = []
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-    let nextPageToken: string | undefined
-    while (true) {
-      const url = new URL(
-        'https://generativelanguage.googleapis.com/v1beta/models'
-      )
-      url.searchParams.set('key', apiKey!)
-      if (nextPageToken) {
-        url.searchParams.set('pageToken', nextPageToken)
-      }
-
-      const json = await fetchJson(url.toString(), {})
-      const data = Array.isArray(json?.models) ? json.models : []
-
-      models.push(
-        ...data
-          .filter(item =>
-            Array.isArray(item?.supportedGenerationMethods)
-              ? item.supportedGenerationMethods.includes('generateContent')
-              : false
-          )
-          .map(item => {
-            const rawName = String(item?.name ?? '')
-            const id = rawName.startsWith('models/')
-              ? rawName.slice('models/'.length)
-              : rawName
-            if (!id) return null
-            return {
-              id,
-              name: String(item?.displayName ?? id),
-              provider: 'Google',
-              providerId: 'google'
-            } satisfies Model
-          })
-          .filter((model): model is Model => model !== null)
-          .filter(model => passesGoogleFilters(model.id))
-      )
-
-      nextPageToken =
-        typeof json?.nextPageToken === 'string' ? json.nextPageToken : undefined
-      if (!nextPageToken) {
-        break
-      }
-    }
-
-    return sortModels(dedupeModels(models))
-  } catch (error) {
-    console.warn('[ModelFetch] Failed to fetch Google models:', error)
-    return []
-  }
-}
-
-export async function fetchOllamaModels(): Promise<Model[]> {
-  if (!isProviderEnabled('ollama')) {
-    return []
-  }
-
-  try {
-    const baseUrl = process.env.OLLAMA_BASE_URL
-    const url = new URL('/api/tags', baseUrl).toString()
-    const json = await fetchJson(url, {})
-    const data = Array.isArray(json?.models) ? json.models : []
+    const json = await fetchJson('https://api.anthropic.com/v1/models', {
+      'x-api-key': process.env.ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01'
+    })
 
     return sortModels(
       dedupeModels(
-        data
-          .map(item => String(item?.name ?? ''))
-          .filter(Boolean)
-          .filter(name => !name.toLowerCase().includes('embed'))
-          .map(
-            name =>
-              ({
-                id: name,
-                name,
-                provider: 'Ollama',
-                providerId: 'ollama',
-                providerOptions: {
-                  ollama: {
-                    think: true
-                  }
-                }
-              }) satisfies Model
-          )
+        (json.data || [])
+          .map((i: any) => ({
+            id: i.id,
+            name: i.display_name || i.id,
+            provider: 'Anthropic',
+            providerId: 'anthropic'
+          }))
+          .filter((m: Model) => passesAnthropicFilters(m.id))
       )
     )
-  } catch (error) {
-    console.warn('[ModelFetch] Failed to fetch Ollama models:', error)
+  } catch {
     return []
   }
 }
 
-export async function fetchGatewayModels(): Promise<Model[]> {
-  if (!isProviderEnabled('gateway')) {
+// 🔥 GOOGLE
+export async function fetchGoogleModels(): Promise<Model[]> {
+  if (!isProviderEnabled('google')) return []
+
+  try {
+    const json = await fetchJson(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}`,
+      {}
+    )
+
+    return sortModels(
+      dedupeModels(
+        (json.models || [])
+          .map((m: any) => {
+            const id = m.name.replace('models/', '')
+            return {
+              id,
+              name: m.displayName || id,
+              provider: 'Google',
+              providerId: 'google'
+            }
+          })
+          .filter((m: Model) => passesGoogleFilters(m.id))
+      )
+    )
+  } catch {
     return []
   }
+}
+
+// 🔥 GROQ (NEW)
+export async function fetchGroqModels(): Promise<Model[]> {
+  if (!isProviderEnabled('groq')) return []
+
+  try {
+    const groq = createGroq({
+      apiKey: process.env.GROQ_API_KEY
+    })
+
+    const models = await groq.models.list()
+
+    return sortModels(
+      dedupeModels(
+        models.data
+          .map((m: any) => ({
+            id: m.id,
+            name: m.id,
+            provider: 'Groq',
+            providerId: 'groq'
+          }))
+          .filter((m: Model) =>
+            !m.id.toLowerCase().includes('embed')
+          )
+      )
+    )
+  } catch {
+    return []
+  }
+}
+
+// 🔥 OLLAMA
+export async function fetchOllamaModels(): Promise<Model[]> {
+  if (!isProviderEnabled('ollama')) return []
+
+  try {
+    const json = await fetchJson(
+      `${process.env.OLLAMA_BASE_URL}/api/tags`,
+      {}
+    )
+
+    return sortModels(
+      dedupeModels(
+        (json.models || [])
+          .map((m: any) => ({
+            id: m.name,
+            name: m.name,
+            provider: 'Ollama',
+            providerId: 'ollama'
+          }))
+      )
+    )
+  } catch {
+    return []
+  }
+}
+
+// 🔥 GATEWAY
+export async function fetchGatewayModels(): Promise<Model[]> {
+  if (!isProviderEnabled('gateway')) return []
 
   try {
     const gateway = createGateway({
       apiKey: process.env.AI_GATEWAY_API_KEY
     })
 
-    const metadata = await gateway.getAvailableModels()
-    const availableModels = metadata.models ?? []
+    const data = await gateway.getAvailableModels()
 
     return sortModels(
       dedupeModels(
-        availableModels
-          .filter(model => model?.modelType === 'language')
-          .map(model => {
-            const id = String(model?.id ?? '')
-            if (!id) return null
-            return {
-              id,
-              name: String(model?.name ?? id),
-              provider: 'Gateway',
-              providerId: 'gateway'
-            } satisfies Model
-          })
-          .filter((model): model is Model => model !== null)
-          .filter(model => passesGatewayFilters(model.id))
+        (data.models || [])
+          .map((m: any) => ({
+            id: m.id,
+            name: m.name || m.id,
+            provider: 'Gateway',
+            providerId: 'gateway'
+          }))
+          .filter((m: Model) => passesGatewayFilters(m.id))
       )
     )
-  } catch (error) {
-    console.warn('[ModelFetch] Failed to fetch Gateway models:', error)
+  } catch {
     return []
   }
 }
 
-export async function fetchAvailableModels(options?: {
-  forceRefresh?: boolean
-}): Promise<ModelsByProvider> {
-  const forceRefresh = options?.forceRefresh === true
+// 🔥 MAIN
+export async function fetchAvailableModels(): Promise<ModelsByProvider> {
   const now = Date.now()
 
-  if (!forceRefresh && modelsCache && modelsCache.expiresAt > now) {
+  if (modelsCache && modelsCache.expiresAt > now) {
     return modelsCache.value
   }
 
-  const [openai, anthropic, google, ollama, gateway] = await Promise.all([
-    fetchOpenAIModels(),
-    fetchAnthropicModels(),
-    fetchGoogleModels(),
-    fetchOllamaModels(),
-    fetchGatewayModels()
-  ])
+  const [openai, anthropic, google, groq, ollama, gateway] =
+    await Promise.all([
+      fetchOpenAIModels(),
+      fetchAnthropicModels(),
+      fetchGoogleModels(),
+      fetchGroqModels(),
+      fetchOllamaModels(),
+      fetchGatewayModels()
+    ])
 
   const grouped = groupByProvider(
-    dedupeModels([...openai, ...anthropic, ...google, ...ollama, ...gateway])
+    dedupeModels([
+      ...openai,
+      ...anthropic,
+      ...google,
+      ...groq,
+      ...ollama,
+      ...gateway
+    ])
   )
 
-  // Keep stable ordering for each provider list.
   const normalized = Object.fromEntries(
-    Object.entries(grouped).map(([provider, models]) => [
-      provider,
-      sortModels(models)
-    ])
+    Object.entries(grouped).map(([k, v]) => [k, sortModels(v)])
   )
 
   modelsCache = {
