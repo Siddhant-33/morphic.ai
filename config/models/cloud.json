@@ -27,5 +27,132 @@
         }
       }
     }
+  },
+  "modelCategories": {
+    "logicalReasoning": {
+      "label": "Logical Reasoning",
+      "models": [
+        {
+          "id": "gpt-4o",
+          "name": "GPT-4o",
+          "provider": "OpenAI",
+          "providerId": "openai"
+        },
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4",
+          "provider": "Anthropic",
+          "providerId": "anthropic"
+        },
+        {
+          "id": "gemini-3.1-pro-preview",
+          "name": "Gemini 3.1 Pro",
+          "provider": "Google",
+          "providerId": "google",
+          "providerOptions": {
+            "google": {
+              "thinkingConfig": {
+                "includeThoughts": true
+              }
+            }
+          }
+        },
+        {
+          "id": "llama-3.3-70b-versatile",
+          "name": "Llama 3.3 70B (Groq)",
+          "provider": "Groq",
+          "providerId": "groq"
+        }
+      ]
+    },
+    "criticalThinking": {
+      "label": "Critical Thinking",
+      "models": [
+        {
+          "id": "claude-opus-4-20250514",
+          "name": "Claude Opus 4",
+          "provider": "Anthropic",
+          "providerId": "anthropic"
+        },
+        {
+          "id": "gpt-4-turbo",
+          "name": "GPT-4 Turbo",
+          "provider": "OpenAI",
+          "providerId": "openai"
+        },
+        {
+          "id": "gemini-3-flash-preview",
+          "name": "Gemini 3 Flash",
+          "provider": "Google",
+          "providerId": "google",
+          "providerOptions": {
+            "google": {
+              "thinkingConfig": {
+                "includeThoughts": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "adaptiveThinking": {
+      "label": "Adaptive Thinking",
+      "models": [
+        {
+          "id": "gemini-3.1-flash-lite-preview",
+          "name": "Gemini 3.1 Flash Lite",
+          "provider": "Google",
+          "providerId": "google",
+          "providerOptions": {
+            "google": {
+              "thinkingConfig": {
+                "includeThoughts": true
+              }
+            }
+          }
+        },
+        {
+          "id": "gpt-4o-mini",
+          "name": "GPT-4o Mini",
+          "provider": "OpenAI",
+          "providerId": "openai"
+        },
+        {
+          "id": "claude-3-5-sonnet-20241022",
+          "name": "Claude 3.5 Sonnet",
+          "provider": "Anthropic",
+          "providerId": "anthropic"
+        },
+        {
+          "id": "mixtral-8x7b-32768",
+          "name": "Mixtral 8x7B (Groq)",
+          "provider": "Groq",
+          "providerId": "groq"
+        }
+      ]
+    },
+    "fastResponse": {
+      "label": "Fast Response",
+      "models": [
+        {
+          "id": "llama-3.3-70b-versatile",
+          "name": "Llama 3.3 70B (Groq)",
+          "provider": "Groq",
+          "providerId": "groq"
+        },
+        {
+          "id": "gemini-1.5-flash",
+          "name": "Gemini 1.5 Flash",
+          "provider": "Google",
+          "providerId": "google"
+        },
+        {
+          "id": "gpt-3.5-turbo",
+          "name": "GPT-3.5 Turbo",
+          "provider": "OpenAI",
+          "providerId": "openai"
+        }
+      ]
+    }
   }
 }
