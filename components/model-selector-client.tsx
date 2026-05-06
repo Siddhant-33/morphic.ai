@@ -287,3 +287,25 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                           )
                           setOpen(false)
                         }}
+                        className="cursor-pointer"
+                      >
+                        <Check
+                          className={cn(
+                            'h-4 w-4',
+                            isSelected ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        <ProviderLogo providerId={model.providerId} />
+                        <span className="truncate">{model.name || model.id}</span>
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              ))
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
