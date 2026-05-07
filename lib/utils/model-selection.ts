@@ -23,6 +23,15 @@ const PROVIDER_LABELS: Record<string, string> = {
   'openai-compatible': 'OpenAI Compatible'
 }
 
+/**
+ * ✅ FIX: normalize DEFAULT_MODEL safely
+ * prevents TS errors if providerId is missing in config file
+ */
+const SAFE_DEFAULT_MODEL: Model = {
+  ...DEFAULT_MODEL,
+  providerId: (DEFAULT_MODEL as any).providerId ?? 'google'
+}
+
 function buildProviderOptions(
   providerId: string,
   _modelId: string
@@ -34,7 +43,6 @@ function buildProviderOptions(
       }
     }
   }
-
   return undefined
 }
 
@@ -75,25 +83,17 @@ function resolveModelForMode(mode: SearchMode): Model | undefined {
     const model = getModelForMode(mode)
     if (!model) return undefined
 
-    if (!isProviderEnabled(model.providerId)) {
-      console.warn(
-        `[ModelSelection] Provider "${model.providerId}" is not enabled for mode "${mode}"`
-      )
-      return undefined
-    }
+    if (!isProviderEnabled(model.providerId)) return undefined
 
     return model
   } catch (error) {
-    console.error(
-      `[ModelSelection] Failed to load model configuration for mode "${mode}":`,
-      error
-    )
+    console.error(`[ModelSelection] mode error "${mode}":`, error)
     return undefined
   }
 }
 
 /**
- * Model selection logic
+ * MAIN MODEL SELECTOR
  */
 export async function selectModel({
   searchMode,
@@ -105,28 +105,17 @@ export async function selectModel({
     )
 
     if (parsedCookie) {
-      try {
-        if (!isProviderEnabled(parsedCookie.providerId)) {
-          console.warn(
-            `[ModelSelection] Saved model provider "${parsedCookie.providerId}" is not enabled.`
-          )
-        } else {
-          return buildLocalCookieModel(
-            parsedCookie.providerId,
-            parsedCookie.modelId
-          )
-        }
-      } catch (error) {
-        console.error(
-          '[ModelSelection] Failed to resolve model from cookie:',
-          error
+      if (isProviderEnabled(parsedCookie.providerId)) {
+        return buildLocalCookieModel(
+          parsedCookie.providerId,
+          parsedCookie.modelId
         )
       }
     }
 
-    // ✅ FIXED: providerId kept, safe access
-    if (isProviderEnabled((DEFAULT_MODEL as Model).providerId)) {
-      return DEFAULT_MODEL
+    // ✅ FIX: safe default model usage
+    if (isProviderEnabled(SAFE_DEFAULT_MODEL.providerId)) {
+      return SAFE_DEFAULT_MODEL
     }
 
     return pickFirstFetchedModel(await fetchAvailableModels())
@@ -137,18 +126,17 @@ export async function selectModel({
       ? searchMode
       : 'quick'
 
-  const modePreferenceOrder: SearchMode[] = Array.from(
+  const modeOrder = Array.from(
     new Set<SearchMode>([requestedMode, ...MODE_FALLBACK_ORDER])
   )
 
-  for (const candidateMode of modePreferenceOrder) {
-    const model = resolveModelForMode(candidateMode)
+  for (const mode of modeOrder) {
+    const model = resolveModelForMode(mode)
     if (model) return model
   }
 
-  // ✅ FIXED: cloud fallback
-  if (isProviderEnabled((DEFAULT_MODEL as Model).providerId)) {
-    return DEFAULT_MODEL
+  if (isProviderEnabled(SAFE_DEFAULT_MODEL.providerId)) {
+    return SAFE_DEFAULT_MODEL
   }
 
   return pickFirstFetchedModel(await fetchAvailableModels())
