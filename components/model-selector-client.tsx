@@ -29,15 +29,22 @@ function modelKey(model: Model): string {
   return `${model.providerId}:${model.id}`
 }
 
-function getModelDisplayName(model: Model): string {
-  // FIX [object Object] ERROR - Always return a string
-  if (typeof model.name === 'string' && model.name.trim()) {
-    return model.name
+// FIX [object Object] - Force string output
+function safeModelName(model: Model): string {
+  try {
+    const name = model?.name
+    const id = model?.id
+    
+    if (typeof name === 'string' && name.length > 0) {
+      return name
+    }
+    if (typeof id === 'string' && id.length > 0) {
+      return id
+    }
+    return 'Unknown Model'
+  } catch (e) {
+    return 'Unknown Model'
   }
-  if (typeof model.id === 'string' && model.id.trim()) {
-    return model.id
-  }
-  return 'Unknown Model'
 }
 
 const PROVIDER_LOGO_BY_ID: Record<string, string> = {
@@ -47,7 +54,8 @@ const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   gateway: '/providers/logos/gateway.svg',
   'openai-compatible': '/providers/logos/openai-compatible.svg',
   ollama: '/providers/logos/ollama.svg',
-  groq: '/providers/logos/groq.svg'
+  groq: '/providers/logos/groq.svg',
+  openrouter: '/providers/logos/openrouter.svg'
 }
 
 function ProviderLogo({ providerId }: { providerId: string }) {
@@ -74,7 +82,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 }
 
 function categorizeModel(model: Model): string {
-  const name = getModelDisplayName(model).toLowerCase()
+  const name = safeModelName(model).toLowerCase()
   
   if (
     name.includes('instant') ||
@@ -82,6 +90,7 @@ function categorizeModel(model: Model): string {
     name.includes('lite') ||
     name.includes('mini') ||
     name.includes('8b') ||
+    name.includes('7b') ||
     name.includes('haiku') ||
     name.includes('3.5')
   ) {
@@ -94,7 +103,7 @@ function categorizeModel(model: Model): string {
     name.includes('pro') ||
     name.includes('opus') ||
     name.includes('70b') ||
-    name.includes('turbo')
+    name.includes('o1')
   ) {
     return 'Complex Tasks'
   }
@@ -177,8 +186,6 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
     return null
   }
 
-  const selectedModelName = getModelDisplayName(selectedModel)
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -190,7 +197,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
         >
           <ProviderLogo providerId={selectedModel.providerId} />
           <span className="truncate max-w-40 text-xs font-medium">
-            {selectedModelName}
+            {safeModelName(selectedModel)}
           </span>
           <ChevronDown
             className={cn(
@@ -242,7 +249,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                     {models.map(model => {
                       const value = modelKey(model)
                       const isSelected = selectedModelKey === value
-                      const displayName = getModelDisplayName(model)
+                      const displayName = safeModelName(model)
                       return (
                         <CommandItem
                           key={value}
@@ -283,7 +290,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                   {models.map(model => {
                     const value = modelKey(model)
                     const isSelected = selectedModelKey === value
-                    const displayName = getModelDisplayName(model)
+                    const displayName = safeModelName(model)
                     return (
                       <CommandItem
                         key={value}
