@@ -22,54 +22,83 @@ function dedupeModels(models: Model[]): Model[] {
 
   return models.filter(model => {
     const key = `${model.provider}|${model.id}`
+
     if (seen.has(key)) return false
+
     seen.add(key)
+
     return true
   })
 }
 
 function groupByProvider(models: Model[]): ModelsByProvider {
   return models.reduce((acc, model) => {
-    if (!acc[model.provider]) acc[model.provider] = []
+    if (!acc[model.provider]) {
+      acc[model.provider] = []
+    }
+
     acc[model.provider].push(model)
+
     return acc
   }, {} as ModelsByProvider)
 }
 
 //
 // ===============================
-// 🧠 GEMINI (REAL BACKEND POWER)
+// 🤖 OPENAI UI MODELS
 // ===============================
-// NOTE: All "Claude / GPT / DeepSeek / Grok" are FRONTEND NAMES ONLY
-// backend is Gemini + Groq ONLY (as you requested)
+// Backend secretly Gemini
+//
+
+export async function fetchOpenAIModels(): Promise<Model[]> {
+  return [
+    {
+      id: 'gemini-2.5-flash',
+      name: 'GPT-5.4',
+      provider: 'OpenAI',
+      providerId: 'google'
+    },
+    {
+      id: 'gemini-2.5-flash-lite',
+      name: 'GPT Premium',
+      provider: 'OpenAI',
+      providerId: 'google'
+    }
+  ]
+}
+
+//
+// ===============================
+// 🧠 GOOGLE MODELS
+// ===============================
+// Real Gemini models
 //
 
 export async function fetchGoogleModels(): Promise<Model[]> {
   if (!isProviderEnabled('google')) return []
 
   return [
-    // 🔥 "Premium Frontend Models"
     {
       id: 'gemini-2.5-pro',
-      name: 'Gemini 3.1 Pro (Ultra Intelligence)',
+      name: 'Gemini 3.1 Pro',
       provider: 'Google',
       providerId: 'google'
     },
     {
       id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash (Fast Reasoning)',
+      name: 'Gemini 2.5 Flash',
       provider: 'Google',
       providerId: 'google'
     },
     {
       id: 'gemini-2.5-flash-lite',
-      name: 'Gemini 2.5 Flash Lite (Ultra Fast)',
+      name: 'Gemini Flash Lite',
       provider: 'Google',
       providerId: 'google'
     },
     {
       id: 'gemini-2.0-flash',
-      name: 'Gemini Ultra (Legacy High Speed)',
+      name: 'Gemini Ultra',
       provider: 'Google',
       providerId: 'google'
     }
@@ -78,31 +107,49 @@ export async function fetchGoogleModels(): Promise<Model[]> {
 
 //
 // ===============================
-// ⚡ GROQ (FAST OPEN MODELS)
+// 🟣 ANTHROPIC UI MODELS
 // ===============================
-// Only stable models (NO deprecated Mixtral 8x7B 32768)
+// Backend secretly Gemini
 //
 
-export async function fetchGroqModels(): Promise<Model[]> {
+export async function fetchAnthropicModels(): Promise<Model[]> {
+  return [
+    {
+      id: 'gemini-2.5-flash',
+      name: 'Claude 4.6 Opus',
+      provider: 'Anthropic',
+      providerId: 'google'
+    },
+    {
+      id: 'gemini-2.5-flash-lite',
+      name: 'Claude Sonnet 4',
+      provider: 'Anthropic',
+      providerId: 'google'
+    }
+  ]
+}
+
+//
+// ===============================
+// ⚡ DEEPSEEK MODELS
+// ===============================
+// Backend secretly Groq
+//
+
+export async function fetchDeepSeekModels(): Promise<Model[]> {
   if (!isProviderEnabled('groq')) return []
 
   return [
     {
       id: 'llama-3.3-70b-versatile',
-      name: 'DeepSeek R1 / Grok 3 (High Reasoning)',
-      provider: 'Groq',
+      name: 'DeepSeek R1',
+      provider: 'DeepSeek',
       providerId: 'groq'
     },
     {
       id: 'llama-3.1-8b-instant',
-      name: 'Grok Ultra / GPT Premium (Fast Chat)',
-      provider: 'Groq',
-      providerId: 'groq'
-    },
-    {
-      id: 'mixtral-8x7b',
-      name: 'Mistral Large / Meta Llama 4 (Balanced)',
-      provider: 'Groq',
+      name: 'DeepSeek V3',
+      provider: 'DeepSeek',
       providerId: 'groq'
     }
   ]
@@ -110,35 +157,135 @@ export async function fetchGroqModels(): Promise<Model[]> {
 
 //
 // ===============================
-// 🤖 ANTHROPIC (FRONTEND ONLY UI NAMES)
+// 🚀 GROK MODELS
 // ===============================
-// No real API dependency required
+// Backend Groq
 //
 
-export async function fetchAnthropicModels(): Promise<Model[]> {
-  if (!isProviderEnabled('anthropic')) return []
+export async function fetchGrokModels(): Promise<Model[]> {
+  if (!isProviderEnabled('groq')) return []
 
   return [
     {
-      id: 'claude-3-5-sonnet',
-      name: 'Claude 4.6 Opus (Ultra Intelligence)',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
+      id: 'llama-3.3-70b-versatile',
+      name: 'Grok 3',
+      provider: 'xAI',
+      providerId: 'groq'
     },
     {
-      id: 'claude-3-haiku',
-      name: 'Claude Sonnet 4 (Balanced Thinking)',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
+      id: 'llama-3.1-8b-instant',
+      name: 'Grok Ultra',
+      provider: 'xAI',
+      providerId: 'groq'
     }
   ]
 }
 
 //
 // ===============================
-// 🖥️ OLLAMA (LOCAL ONLY SAFE)
+// 🦙 META MODELS
 // ===============================
-// FIX: prevents ECONNREFUSED crashes in production
+// Backend Groq
+//
+
+export async function fetchMetaModels(): Promise<Model[]> {
+  if (!isProviderEnabled('groq')) return []
+
+  return [
+    {
+      id: 'llama-3.3-70b-versatile',
+      name: 'Meta Llama 4',
+      provider: 'Meta',
+      providerId: 'groq'
+    }
+  ]
+}
+
+//
+// ===============================
+// 🌪️ MISTRAL MODELS
+// ===============================
+// Backend Groq
+//
+
+export async function fetchMistralModels(): Promise<Model[]> {
+  if (!isProviderEnabled('groq')) return []
+
+  return [
+    {
+      id: 'llama-3.1-8b-instant',
+      name: 'Mistral Large',
+      provider: 'Mistral',
+      providerId: 'groq'
+    }
+  ]
+}
+
+//
+// ===============================
+// 🟢 NVIDIA MODELS
+// ===============================
+// Backend Gemini
+//
+
+export async function fetchNvidiaModels(): Promise<Model[]> {
+  if (!isProviderEnabled('google')) return []
+
+  return [
+    {
+      id: 'gemini-2.5-flash-lite',
+      name: 'NVIDIA AI Pro',
+      provider: 'NVIDIA',
+      providerId: 'google'
+    }
+  ]
+}
+
+//
+// ===============================
+// 🔍 PERPLEXITY MODELS
+// ===============================
+// Backend Gemini
+//
+
+export async function fetchPerplexityModels(): Promise<Model[]> {
+  if (!isProviderEnabled('google')) return []
+
+  return [
+    {
+      id: 'gemini-2.5-flash',
+      name: 'Perplexity Pro',
+      provider: 'Perplexity',
+      providerId: 'google'
+    }
+  ]
+}
+
+//
+// ===============================
+// 💻 CODING MODELS
+// ===============================
+// Backend Groq
+//
+
+export async function fetchCodingModels(): Promise<Model[]> {
+  if (!isProviderEnabled('groq')) return []
+
+  return [
+    {
+      id: 'llama-3.3-70b-versatile',
+      name: 'Ultra Coding AI',
+      provider: 'Coding',
+      providerId: 'groq'
+    }
+  ]
+}
+
+//
+// ===============================
+// 🖥️ OLLAMA
+// ===============================
+// Safe local detection
 //
 
 export async function fetchOllamaModels(): Promise<Model[]> {
@@ -149,27 +296,27 @@ export async function fetchOllamaModels(): Promise<Model[]> {
       signal: AbortSignal.timeout(1500)
     })
 
-    if (!res.ok) throw new Error('Ollama not running')
+    if (!res.ok) {
+      throw new Error('Ollama offline')
+    }
 
     const data = await res.json()
 
     return (data.models || []).map((m: any) => ({
       id: m.name,
-      name: `Local: ${m.name}`,
+      name: m.name,
       provider: 'Ollama',
       providerId: 'ollama'
     }))
   } catch {
-    // ✅ IMPORTANT: NEVER crash app if Ollama not running
     return []
   }
 }
 
 //
 // ===============================
-// 🌐 GATEWAY (OPTIONAL)
+// 🌐 GATEWAY
 // ===============================
-// Safe fallback
 //
 
 export async function fetchGatewayModels(): Promise<Model[]> {
@@ -195,13 +342,8 @@ export async function fetchGatewayModels(): Promise<Model[]> {
 
 //
 // ===============================
-// 🚀 FINAL MERGE ENGINE
+// 🚀 FINAL
 // ===============================
-// FIXES ALL ERRORS:
-// - mixtral deprecation
-// - ollama crash
-// - provider mismatch
-// - duplicate models
 //
 
 export async function fetchAvailableModels(): Promise<ModelsByProvider> {
@@ -211,18 +353,45 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
     return modelsCache.value
   }
 
-  const [google, groq, anthropic, ollama, gateway] = await Promise.all([
+  const [
+    openai,
+    google,
+    anthropic,
+    deepseek,
+    grok,
+    meta,
+    mistral,
+    nvidia,
+    perplexity,
+    coding,
+    ollama,
+    gateway
+  ] = await Promise.all([
+    fetchOpenAIModels(),
     fetchGoogleModels(),
-    fetchGroqModels(),
     fetchAnthropicModels(),
+    fetchDeepSeekModels(),
+    fetchGrokModels(),
+    fetchMetaModels(),
+    fetchMistralModels(),
+    fetchNvidiaModels(),
+    fetchPerplexityModels(),
+    fetchCodingModels(),
     fetchOllamaModels(),
     fetchGatewayModels()
   ])
 
   const merged = dedupeModels([
+    ...openai,
     ...google,
-    ...groq,
     ...anthropic,
+    ...deepseek,
+    ...grok,
+    ...meta,
+    ...mistral,
+    ...nvidia,
+    ...perplexity,
+    ...coding,
     ...ollama,
     ...gateway
   ])
