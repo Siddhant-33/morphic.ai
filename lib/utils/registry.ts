@@ -3,18 +3,34 @@ import { createGateway } from '@ai-sdk/gateway'
 import { google } from '@ai-sdk/google'
 import { createGroq } from '@ai-sdk/groq'
 import { createOpenAI, openai } from '@ai-sdk/openai'
+import { createProviderRegistry, customProvider } from 'ai'
 
-import { createProviderRegistry } from 'ai'
-
+//
+// ✅ GROQ
+//
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY
 })
 
-const providers: Record<string, any> = {
+//
+// ✅ OLLAMA VIA OPENAI-COMPATIBLE API
+//
+const ollama = createOpenAI({
+  name: 'ollama',
+  apiKey: 'ollama',
+  baseURL: 'http://127.0.0.1:11434/v1'
+})
+
+//
+// ✅ PROVIDERS
+//
+const providers = {
   openai,
   anthropic,
   google,
   groq,
+
+  ollama,
 
   'openai-compatible': createOpenAI({
     apiKey: process.env.OPENAI_COMPATIBLE_API_KEY,
@@ -26,51 +42,15 @@ const providers: Record<string, any> = {
   })
 }
 
+//
+// ✅ REGISTRY
+//
 export const registry = createProviderRegistry(providers)
 
 //
-// ✅ CUSTOM MODEL GETTER
+// ✅ MODEL GETTER
 //
-export function getModel(model: string): any {
-  //
-  // ✅ OLLAMA FIX
-  //
-  if (model.startsWith('ollama:')) {
-    const modelId = model.replace('ollama:', '')
-
-    return {
-      specificationVersion: 'v2',
-
-      provider: 'ollama.chat',
-
-      modelId,
-
-      supportedUrls: {},
-
-      async doGenerate() {
-        const response = await fetch(
-          'http://127.0.0.1:11434/api/generate',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: modelId,
-              prompt: 'Hello'
-            })
-          }
-        )
-
-        const data = await response.json()
-
-        return {
-          text: data.response || ''
-        }
-      }
-    }
-  }
-
+export function getModel(model: string) {
   return registry.languageModel(
     model as Parameters<typeof registry.languageModel>[0]
   )
@@ -93,6 +73,9 @@ export function isProviderEnabled(providerId: string): boolean {
     case 'groq':
       return !!process.env.GROQ_API_KEY
 
+    case 'ollama':
+      return true
+
     case 'openai-compatible':
       return (
         !!process.env.OPENAI_COMPATIBLE_API_KEY &&
@@ -101,9 +84,6 @@ export function isProviderEnabled(providerId: string): boolean {
 
     case 'gateway':
       return !!process.env.AI_GATEWAY_API_KEY
-
-    case 'ollama':
-      return true
 
     default:
       return false
