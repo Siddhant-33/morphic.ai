@@ -4,8 +4,6 @@ import { google } from '@ai-sdk/google'
 import { createOpenAI, openai } from '@ai-sdk/openai'
 import { createGroq } from '@ai-sdk/groq'
 import { createProviderRegistry, LanguageModel } from 'ai'
-
-// ✅ CORRECT OLLAMA IMPORT
 import { createOllama } from 'ollama-ai-provider'
 
 // ✅ GROQ
@@ -37,7 +35,7 @@ const providers: Record<string, any> = {
   })
 }
 
-// ✅ ADD OLLAMA IF ENABLED
+// ✅ ADD OLLAMA
 if (ollamaProvider) {
   providers.ollama = ollamaProvider
 }
@@ -50,7 +48,15 @@ export function getModel(model: string): LanguageModel {
   if (model.startsWith('ollama:') && ollamaProvider) {
     const modelId = model.slice('ollama:'.length)
 
-    return ollamaProvider(modelId)
+    const lm = ollamaProvider(modelId) as any
+
+    // ✅ FIX TYPESCRIPT ERROR
+    Object.defineProperty(lm, 'supportedUrls', {
+      value: {},
+      configurable: true
+    })
+
+    return lm as LanguageModel
   }
 
   return registry.languageModel(
@@ -58,7 +64,7 @@ export function getModel(model: string): LanguageModel {
   )
 }
 
-// ✅ CHECK ENABLED PROVIDERS
+// ✅ ENABLE PROVIDERS
 export function isProviderEnabled(providerId: string): boolean {
   switch (providerId) {
     case 'openai':
