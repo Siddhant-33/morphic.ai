@@ -13,6 +13,7 @@ import { SearchMode } from '@/lib/types/search'
 import { isProviderEnabled } from '@/lib/utils/registry'
 
 const MODE_FALLBACK_ORDER: SearchMode[] = ['quick', 'adaptive']
+
 const PROVIDER_LABELS: Record<string, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic',
@@ -46,9 +47,7 @@ function pickFirstFetchedModel(
 
   for (const provider of providers) {
     const firstModel = modelsByProvider[provider]?.[0]
-    if (firstModel) {
-      return firstModel
-    }
+    if (firstModel) return firstModel
   }
 
   return null
@@ -74,9 +73,7 @@ function buildLocalCookieModel(providerId: string, modelId: string): Model {
 function resolveModelForMode(mode: SearchMode): Model | undefined {
   try {
     const model = getModelForMode(mode)
-    if (!model) {
-      return undefined
-    }
+    if (!model) return undefined
 
     if (!isProviderEnabled(model.providerId)) {
       console.warn(
@@ -96,13 +93,7 @@ function resolveModelForMode(mode: SearchMode): Model | undefined {
 }
 
 /**
- * Determines which model to use based on search mode preference.
- *
- * Priority order:
- * 1. Use cloud mode-specific model for the active mode when enabled
- * 2. If the active mode has no enabled model, try remaining modes
- * 3. Use DEFAULT_MODEL when its provider is enabled
- * 4. Return null when no enabled models are available
+ * Model selection logic
  */
 export async function selectModel({
   searchMode,
@@ -133,7 +124,8 @@ export async function selectModel({
       }
     }
 
-    if (isProviderEnabled(DEFAULT_MODEL.providerId)) {
+    // ✅ FIXED: providerId kept, safe access
+    if (isProviderEnabled((DEFAULT_MODEL as Model).providerId)) {
       return DEFAULT_MODEL
     }
 
@@ -151,12 +143,11 @@ export async function selectModel({
 
   for (const candidateMode of modePreferenceOrder) {
     const model = resolveModelForMode(candidateMode)
-    if (model) {
-      return model
-    }
+    if (model) return model
   }
 
-  if (isProviderEnabled(DEFAULT_MODEL.providerId)) {
+  // ✅ FIXED: cloud fallback
+  if (isProviderEnabled((DEFAULT_MODEL as Model).providerId)) {
     return DEFAULT_MODEL
   }
 
