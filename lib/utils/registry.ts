@@ -1,24 +1,15 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { createGateway } from '@ai-sdk/gateway'
 import { google } from '@ai-sdk/google'
-import { createOpenAI, openai } from '@ai-sdk/openai'
 import { createGroq } from '@ai-sdk/groq'
-import { createProviderRegistry, LanguageModel } from 'ai'
-import { createOllama } from 'ollama-ai-provider'
+import { createOpenAI, openai } from '@ai-sdk/openai'
 
-// ✅ GROQ
+import { createProviderRegistry } from 'ai'
+
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY
 })
 
-// ✅ OLLAMA
-const ollamaProvider = process.env.OLLAMA_BASE_URL
-  ? createOllama({
-      baseURL: process.env.OLLAMA_BASE_URL
-    })
-  : null
-
-// ✅ PROVIDERS
 const providers: Record<string, any> = {
   openai,
   anthropic,
@@ -35,28 +26,49 @@ const providers: Record<string, any> = {
   })
 }
 
-// ✅ ADD OLLAMA
-if (ollamaProvider) {
-  providers.ollama = ollamaProvider
-}
-
-// ✅ REGISTRY
 export const registry = createProviderRegistry(providers)
 
-// ✅ GET MODEL
-export function getModel(model: string): LanguageModel {
-  if (model.startsWith('ollama:') && ollamaProvider) {
-    const modelId = model.slice('ollama:'.length)
+//
+// ✅ CUSTOM MODEL GETTER
+//
+export function getModel(model: string): any {
+  //
+  // ✅ OLLAMA FIX
+  //
+  if (model.startsWith('ollama:')) {
+    const modelId = model.replace('ollama:', '')
 
-    const lm = ollamaProvider(modelId) as any
+    return {
+      specificationVersion: 'v2',
 
-    // ✅ FIX TYPESCRIPT ERROR
-    Object.defineProperty(lm, 'supportedUrls', {
-      value: {},
-      configurable: true
-    })
+      provider: 'ollama.chat',
 
-    return lm as LanguageModel
+      modelId,
+
+      supportedUrls: {},
+
+      async doGenerate() {
+        const response = await fetch(
+          'http://127.0.0.1:11434/api/generate',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: modelId,
+              prompt: 'Hello'
+            })
+          }
+        )
+
+        const data = await response.json()
+
+        return {
+          text: data.response || ''
+        }
+      }
+    }
   }
 
   return registry.languageModel(
@@ -64,7 +76,9 @@ export function getModel(model: string): LanguageModel {
   )
 }
 
+//
 // ✅ ENABLE PROVIDERS
+//
 export function isProviderEnabled(providerId: string): boolean {
   switch (providerId) {
     case 'openai':
@@ -89,7 +103,7 @@ export function isProviderEnabled(providerId: string): boolean {
       return !!process.env.AI_GATEWAY_API_KEY
 
     case 'ollama':
-      return !!process.env.OLLAMA_BASE_URL
+      return true
 
     default:
       return false
