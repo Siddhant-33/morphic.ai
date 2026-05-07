@@ -1,4 +1,6 @@
 import { createGateway } from '@ai-sdk/gateway'
+import { createOllama } from 'ai-sdk-ollama'
+
 import { Model } from '@/lib/types/models'
 import { isProviderEnabled } from '@/lib/utils/registry'
 
@@ -19,9 +21,14 @@ function sortModels(models: Model[]): Model[] {
 
 function dedupeModels(models: Model[]): Model[] {
   const seen = new Set<string>()
+
   return models.filter(model => {
-    const key = `${model.provider}|${model.id}`
-    if (seen.has(key)) return false
+    const key = `${model.providerId}:${model.id}`
+
+    if (seen.has(key)) {
+      return false
+    }
+
     seen.add(key)
     return true
   })
@@ -29,73 +36,187 @@ function dedupeModels(models: Model[]): Model[] {
 
 function groupByProvider(models: Model[]): ModelsByProvider {
   return models.reduce((acc, model) => {
-    if (!acc[model.provider]) acc[model.provider] = []
-    acc[model.provider].push(model)
+    if (!acc[model.providerId]) {
+      acc[model.providerId] = []
+    }
+
+    acc[model.providerId].push(model)
+
     return acc
   }, {} as ModelsByProvider)
 }
 
 //
-// ✅ OPENAI (clean + stable)
+// ✅ OPENAI
 //
 export async function fetchOpenAIModels(): Promise<Model[]> {
-  if (!isProviderEnabled('openai')) return []
+  if (!isProviderEnabled('openai')) {
+    return []
+  }
 
   return [
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', providerId: 'openai' },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', providerId: 'openai' },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI', providerId: 'openai' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI', providerId: 'openai' }
+    {
+      id: 'gpt-4o',
+      name: 'GPT-4o',
+      provider: 'OpenAI',
+      providerId: 'openai'
+    },
+    {
+      id: 'gpt-4o-mini',
+      name: 'GPT-4o Mini',
+      provider: 'OpenAI',
+      providerId: 'openai'
+    },
+    {
+      id: 'gpt-4.1',
+      name: 'GPT-4.1',
+      provider: 'OpenAI',
+      providerId: 'openai'
+    },
+    {
+      id: 'gpt-4.1-mini',
+      name: 'GPT-4.1 Mini',
+      provider: 'OpenAI',
+      providerId: 'openai'
+    }
   ]
 }
 
 //
-// ✅ GOOGLE (ONLY WORKING — no discontinued)
+// ✅ GOOGLE GEMINI
 //
 export async function fetchGoogleModels(): Promise<Model[]> {
-  if (!isProviderEnabled('google')) return []
+  if (!isProviderEnabled('google')) {
+    return []
+  }
 
   return [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', providerId: 'google' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'Google', providerId: 'google' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', providerId: 'google' },
-    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', provider: 'Google', providerId: 'google' },
-    { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', provider: 'Google', providerId: 'google' }
+    {
+      id: 'gemini-3-flash-preview',
+      name: 'Gemini 3 Flash Preview',
+      provider: 'Google',
+      providerId: 'google'
+    },
+    {
+      id: 'gemini-3.1-flash-lite-preview',
+      name: 'Gemini 3.1 Flash Lite',
+      provider: 'Google',
+      providerId: 'google'
+    },
+    {
+      id: 'gemini-2.5-flash',
+      name: 'Gemini 2.5 Flash',
+      provider: 'Google',
+      providerId: 'google'
+    },
+    {
+      id: 'gemini-2.5-flash-lite',
+      name: 'Gemini 2.5 Flash Lite',
+      provider: 'Google',
+      providerId: 'google'
+    }
   ]
 }
 
 //
-// ✅ GROQ (ONLY WORKING MODELS — FIXED)
+// ✅ GROQ
 //
 export async function fetchGroqModels(): Promise<Model[]> {
-  if (!isProviderEnabled('groq')) return []
+  if (!isProviderEnabled('groq')) {
+    return []
+  }
 
   return [
-    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', providerId: 'groq' },
-    { id: 'llama-3.3-8b-instant', name: 'Llama 3.3 8B Fast', provider: 'Groq', providerId: 'groq' },
-    { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', provider: 'Groq', providerId: 'groq' },
-    { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision', provider: 'Groq', providerId: 'groq' }
+    {
+      id: 'llama-3.3-70b-versatile',
+      name: 'Llama 3.3 70B',
+      provider: 'Groq',
+      providerId: 'groq'
+    },
+    {
+      id: 'llama3-8b-8192',
+      name: 'Llama3 8B',
+      provider: 'Groq',
+      providerId: 'groq'
+    },
+    {
+      id: 'mixtral-8x7b-32768',
+      name: 'Mixtral 8x7B',
+      provider: 'Groq',
+      providerId: 'groq'
+    }
   ]
 }
 
 //
-// ✅ ANTHROPIC (clean)
+// ✅ ANTHROPIC
 //
 export async function fetchAnthropicModels(): Promise<Model[]> {
-  if (!isProviderEnabled('anthropic')) return []
+  if (!isProviderEnabled('anthropic')) {
+    return []
+  }
 
   return [
-    { id: 'claude-sonnet-4', name: 'Claude Sonnet 4', provider: 'Anthropic', providerId: 'anthropic' },
-    { id: 'claude-opus-4', name: 'Claude Opus 4', provider: 'Anthropic', providerId: 'anthropic' },
-    { id: 'claude-haiku-4', name: 'Claude Haiku 4', provider: 'Anthropic', providerId: 'anthropic' }
+    {
+      id: 'claude-3-7-sonnet-latest',
+      name: 'Claude 3.7 Sonnet',
+      provider: 'Anthropic',
+      providerId: 'anthropic'
+    },
+    {
+      id: 'claude-3-5-haiku-latest',
+      name: 'Claude 3.5 Haiku',
+      provider: 'Anthropic',
+      providerId: 'anthropic'
+    }
   ]
 }
 
 //
-// ✅ GATEWAY (optional)
+// ✅ OLLAMA
+//
+export async function fetchOllamaModels(): Promise<Model[]> {
+  if (!process.env.OLLAMA_BASE_URL) {
+    return []
+  }
+
+  try {
+    createOllama({
+      baseURL: process.env.OLLAMA_BASE_URL
+    })
+
+    return [
+      {
+        id: 'tinyllama',
+        name: 'TinyLlama',
+        provider: 'Ollama',
+        providerId: 'ollama'
+      },
+      {
+        id: 'llama3',
+        name: 'Llama 3',
+        provider: 'Ollama',
+        providerId: 'ollama'
+      },
+      {
+        id: 'mistral',
+        name: 'Mistral',
+        provider: 'Ollama',
+        providerId: 'ollama'
+      }
+    ]
+  } catch {
+    return []
+  }
+}
+
+//
+// ✅ GATEWAY
 //
 export async function fetchGatewayModels(): Promise<Model[]> {
-  if (!isProviderEnabled('gateway')) return []
+  if (!isProviderEnabled('gateway')) {
+    return []
+  }
 
   try {
     const gateway = createGateway({
@@ -116,7 +237,7 @@ export async function fetchGatewayModels(): Promise<Model[]> {
 }
 
 //
-// ✅ FINAL COMBINED
+// ✅ FINAL
 //
 export async function fetchAvailableModels(): Promise<ModelsByProvider> {
   const now = Date.now()
@@ -125,14 +246,21 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
     return modelsCache.value
   }
 
-  const [openai, google, groq, anthropic, gateway] =
-    await Promise.all([
-      fetchOpenAIModels(),
-      fetchGoogleModels(),
-      fetchGroqModels(),
-      fetchAnthropicModels(),
-      fetchGatewayModels()
-    ])
+  const [
+    openai,
+    google,
+    groq,
+    anthropic,
+    ollama,
+    gateway
+  ] = await Promise.all([
+    fetchOpenAIModels(),
+    fetchGoogleModels(),
+    fetchGroqModels(),
+    fetchAnthropicModels(),
+    fetchOllamaModels(),
+    fetchGatewayModels()
+  ])
 
   const grouped = groupByProvider(
     dedupeModels([
@@ -140,12 +268,16 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
       ...google,
       ...groq,
       ...anthropic,
+      ...ollama,
       ...gateway
     ])
   )
 
   const normalized = Object.fromEntries(
-    Object.entries(grouped).map(([k, v]) => [k, sortModels(v)])
+    Object.entries(grouped).map(([key, models]) => [
+      key,
+      sortModels(models)
+    ])
   )
 
   modelsCache = {
