@@ -29,6 +29,7 @@ function dedupeModels(models: Model[]): Model[] {
     }
 
     seen.add(key)
+
     return true
   })
 }
@@ -71,18 +72,12 @@ export async function fetchOpenAIModels(): Promise<Model[]> {
       name: 'GPT-4.1',
       provider: 'OpenAI',
       providerId: 'openai'
-    },
-    {
-      id: 'gpt-4.1-mini',
-      name: 'GPT-4.1 Mini',
-      provider: 'OpenAI',
-      providerId: 'openai'
     }
   ]
 }
 
 //
-// ✅ GOOGLE GEMINI
+// ✅ GOOGLE
 //
 export async function fetchGoogleModels(): Promise<Model[]> {
   if (!isProviderEnabled('google')) {
@@ -118,7 +113,7 @@ export async function fetchGoogleModels(): Promise<Model[]> {
 }
 
 //
-// ✅ GROQ
+// ✅ GROQ (ONLY WORKING MODELS)
 //
 export async function fetchGroqModels(): Promise<Model[]> {
   if (!isProviderEnabled('groq')) {
@@ -135,12 +130,6 @@ export async function fetchGroqModels(): Promise<Model[]> {
     {
       id: 'llama-3.1-8b-instant',
       name: 'Llama 3.1 8B Instant',
-      provider: 'Groq',
-      providerId: 'groq'
-    },
-    {
-      id: 'mixtral-8x7b-32768',
-      name: 'Mixtral 8x7B',
       provider: 'Groq',
       providerId: 'groq'
     }
@@ -161,21 +150,34 @@ export async function fetchAnthropicModels(): Promise<Model[]> {
       name: 'Claude 3.7 Sonnet',
       provider: 'Anthropic',
       providerId: 'anthropic'
-    },
-    {
-      id: 'claude-3-5-haiku-latest',
-      name: 'Claude 3.5 Haiku',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
     }
   ]
 }
 
 //
-// ❌ OLLAMA DISABLED
+// ✅ OLLAMA
 //
 export async function fetchOllamaModels(): Promise<Model[]> {
-  return []
+  return [
+    {
+      id: 'tinyllama',
+      name: 'TinyLlama',
+      provider: 'Ollama',
+      providerId: 'ollama'
+    },
+    {
+      id: 'llama3',
+      name: 'Llama 3',
+      provider: 'Ollama',
+      providerId: 'ollama'
+    },
+    {
+      id: 'mistral',
+      name: 'Mistral',
+      provider: 'Ollama',
+      providerId: 'ollama'
+    }
+  ]
 }
 
 //
