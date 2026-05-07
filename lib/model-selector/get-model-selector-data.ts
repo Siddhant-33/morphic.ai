@@ -1,10 +1,11 @@
 import { cookies } from 'next/headers'
 
-import { DEFAULT_MODELS } from '@/lib/config/default-model'
+import { DEFAULT_MODEL } from '@/lib/config/default-model'
 import {
   MODEL_SELECTION_COOKIE,
   parseModelSelectionCookie
 } from '@/lib/config/model-selection-cookie'
+
 import { fetchAvailableModels } from '@/lib/models/fetch-models'
 import { ModelSelectorData } from '@/lib/types/model-selector'
 import { Model } from '@/lib/types/models'
@@ -12,9 +13,8 @@ import { isProviderEnabled } from '@/lib/utils/registry'
 
 import 'server-only'
 
-// FIX: no providerId — use provider only
 function modelKey(model: Model): string {
-  return `${model.provider}:${model.id}`
+  return `${model.providerId}:${model.id}`
 }
 
 function pickFirstAvailableModel(
@@ -26,7 +26,10 @@ function pickFirstAvailableModel(
 
   for (const provider of providers) {
     const firstModel = modelsByProvider[provider]?.[0]
-    if (firstModel) return firstModel
+
+    if (firstModel) {
+      return firstModel
+    }
   }
 
   return null
@@ -47,7 +50,7 @@ function resolveSelectedModelKey(
     .flat()
     .some(
       model =>
-        model.provider === parsedCookie.providerId &&
+        model.providerId === parsedCookie.providerId &&
         model.id === parsedCookie.modelId
     )
 
@@ -58,23 +61,38 @@ function resolveSelectedModelKey(
       : ''
 }
 
+//
+// ✅ SAFE DEFAULT MODEL
+//
+const SAFE_DEFAULT_MODEL: Model = {
+  id: DEFAULT_MODEL.id,
+  name: DEFAULT_MODEL.name,
+  provider: DEFAULT_MODEL.provider,
+  providerId:
+    (DEFAULT_MODEL as any).providerId ?? 'google'
+}
+
+//
+// ✅ MAIN
+//
 export async function getModelSelectorData(): Promise<ModelSelectorData> {
   if (process.env.MORPHIC_CLOUD_DEPLOYMENT === 'true') {
     return {
-      enabled: false,
+      enabled: true,
       modelsByProvider: {},
       selectedModelKey: '',
-      hasAvailableModels: false
+      hasAvailableModels: true
     }
   }
 
   const modelsByProvider = await fetchAvailableModels()
-  const fallbackModel = pickFirstAvailableModel(modelsByProvider)
 
-  // FIX: DEFAULT_MODEL → DEFAULT_MODELS
+  const fallbackModel =
+    pickFirstAvailableModel(modelsByProvider)
+
   const hasAvailableModels =
     fallbackModel !== null ||
-    isProviderEnabled(DEFAULT_MODELS[0].provider)
+    isProviderEnabled(SAFE_DEFAULT_MODEL.providerId)
 
   const cookieStore = await cookies()
 
