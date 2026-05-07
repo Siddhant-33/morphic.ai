@@ -1,6 +1,8 @@
-export const DEFAULT_MODEL = {
-  id: 'gemini-2.5-flash',
-  name: 'Gemini 2.5 Flash',
-  provider: 'Google',
-  providerId: 'google'
+import { Model } from '@/lib/types/models'
+
+export const DEFAULT_MODEL: Model = {
+  id: 'llama-3.3-70b-versatile',
+  name: 'Llama 3.3 70B Versatile',
+  provider: 'Groq',
+  providerId: 'groq'
 }
