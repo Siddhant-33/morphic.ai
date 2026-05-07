@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 
-import { DEFAULT_MODEL } from '@/lib/config/default-model'
+import { DEFAULT_MODELS } from '@/lib/config/default-model'
 import {
   MODEL_SELECTION_COOKIE,
   parseModelSelectionCookie
@@ -12,8 +12,9 @@ import { isProviderEnabled } from '@/lib/utils/registry'
 
 import 'server-only'
 
+// FIX: no providerId — use provider only
 function modelKey(model: Model): string {
-  return `${model.providerId}:${model.id}`
+  return `${model.provider}:${model.id}`
 }
 
 function pickFirstAvailableModel(
@@ -25,9 +26,7 @@ function pickFirstAvailableModel(
 
   for (const provider of providers) {
     const firstModel = modelsByProvider[provider]?.[0]
-    if (firstModel) {
-      return firstModel
-    }
+    if (firstModel) return firstModel
   }
 
   return null
@@ -39,6 +38,7 @@ function resolveSelectedModelKey(
   cookieValue?: string
 ): string {
   const parsedCookie = parseModelSelectionCookie(cookieValue)
+
   if (!parsedCookie) {
     return fallbackModel ? modelKey(fallbackModel) : ''
   }
@@ -47,7 +47,7 @@ function resolveSelectedModelKey(
     .flat()
     .some(
       model =>
-        model.providerId === parsedCookie.providerId &&
+        model.provider === parsedCookie.providerId &&
         model.id === parsedCookie.modelId
     )
 
@@ -70,9 +70,14 @@ export async function getModelSelectorData(): Promise<ModelSelectorData> {
 
   const modelsByProvider = await fetchAvailableModels()
   const fallbackModel = pickFirstAvailableModel(modelsByProvider)
+
+  // FIX: DEFAULT_MODEL → DEFAULT_MODELS
   const hasAvailableModels =
-    fallbackModel !== null || isProviderEnabled(DEFAULT_MODEL.providerId)
+    fallbackModel !== null ||
+    isProviderEnabled(DEFAULT_MODELS[0].provider)
+
   const cookieStore = await cookies()
+
   const selectedModelKey = resolveSelectedModelKey(
     modelsByProvider,
     fallbackModel,
