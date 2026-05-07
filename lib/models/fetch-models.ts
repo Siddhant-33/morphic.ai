@@ -1,5 +1,4 @@
 import { createGateway } from '@ai-sdk/gateway'
-import { createOllama } from 'ai-sdk-ollama'
 
 import { Model } from '@/lib/types/models'
 import { isProviderEnabled } from '@/lib/utils/registry'
@@ -134,8 +133,8 @@ export async function fetchGroqModels(): Promise<Model[]> {
       providerId: 'groq'
     },
     {
-      id: 'llama3-8b-8192',
-      name: 'Llama3 8B',
+      id: 'llama-3.1-8b-instant',
+      name: 'Llama 3.1 8B Instant',
       provider: 'Groq',
       providerId: 'groq'
     },
@@ -173,41 +172,10 @@ export async function fetchAnthropicModels(): Promise<Model[]> {
 }
 
 //
-// ✅ OLLAMA
+// ❌ OLLAMA DISABLED
 //
 export async function fetchOllamaModels(): Promise<Model[]> {
-  if (!process.env.OLLAMA_BASE_URL) {
-    return []
-  }
-
-  try {
-    createOllama({
-      baseURL: process.env.OLLAMA_BASE_URL
-    })
-
-    return [
-      {
-        id: 'tinyllama',
-        name: 'TinyLlama',
-        provider: 'Ollama',
-        providerId: 'ollama'
-      },
-      {
-        id: 'llama3',
-        name: 'Llama 3',
-        provider: 'Ollama',
-        providerId: 'ollama'
-      },
-      {
-        id: 'mistral',
-        name: 'Mistral',
-        provider: 'Ollama',
-        providerId: 'ollama'
-      }
-    ]
-  } catch {
-    return []
-  }
+  return []
 }
 
 //
