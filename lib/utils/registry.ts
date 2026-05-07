@@ -3,7 +3,7 @@ import { createGateway } from '@ai-sdk/gateway'
 import { google } from '@ai-sdk/google'
 import { createGroq } from '@ai-sdk/groq'
 import { createOpenAI, openai } from '@ai-sdk/openai'
-import { createProviderRegistry, customProvider } from 'ai'
+import { createProviderRegistry } from 'ai'
 
 //
 // ✅ GROQ
@@ -13,7 +13,7 @@ const groq = createGroq({
 })
 
 //
-// ✅ OLLAMA VIA OPENAI-COMPATIBLE API
+// ✅ OLLAMA (LOCAL)
 //
 const ollama = createOpenAI({
   name: 'ollama',
@@ -29,7 +29,6 @@ const providers = {
   anthropic,
   google,
   groq,
-
   ollama,
 
   'openai-compatible': createOpenAI({
@@ -48,7 +47,7 @@ const providers = {
 export const registry = createProviderRegistry(providers)
 
 //
-// ✅ MODEL GETTER
+// ✅ MODEL RESOLVER
 //
 export function getModel(model: string) {
   return registry.languageModel(
@@ -57,35 +56,34 @@ export function getModel(model: string) {
 }
 
 //
-// ✅ ENABLE PROVIDERS
+// ⚠️ IMPORTANT FIX:
+// We STOP blocking providers in a way that breaks UI
+// Instead: ALWAYS show models, only block API calls if missing keys
 //
 export function isProviderEnabled(providerId: string): boolean {
   switch (providerId) {
     case 'openai':
-      return !!process.env.OPENAI_API_KEY
+      return true
 
     case 'anthropic':
-      return !!process.env.ANTHROPIC_API_KEY
+      return true
 
     case 'google':
-      return !!process.env.GOOGLE_GENERATIVE_AI_API_KEY
+      return true
 
     case 'groq':
-      return !!process.env.GROQ_API_KEY
+      return true
 
     case 'ollama':
       return true
 
     case 'openai-compatible':
-      return (
-        !!process.env.OPENAI_COMPATIBLE_API_KEY &&
-        !!process.env.OPENAI_COMPATIBLE_API_BASE_URL
-      )
+      return true
 
     case 'gateway':
-      return !!process.env.AI_GATEWAY_API_KEY
+      return true
 
     default:
-      return false
+      return true
   }
 }
