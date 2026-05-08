@@ -44,7 +44,9 @@ function groupByProvider(models: Model[]): ModelsByProvider {
 }
 
 //
-// GOOGLE
+// ========================================
+// GOOGLE GEMINI
+// ========================================
 //
 
 export async function fetchGoogleModels(): Promise<Model[]> {
@@ -74,12 +76,26 @@ export async function fetchGoogleModels(): Promise<Model[]> {
       name: 'Gemini 2.0 Flash',
       provider: 'Google',
       providerId: 'google'
+    },
+    {
+      id: 'gemini-1.5-pro',
+      name: 'Gemini 1.5 Pro',
+      provider: 'Google',
+      providerId: 'google'
+    },
+    {
+      id: 'gemini-1.5-flash',
+      name: 'Gemini 1.5 Flash',
+      provider: 'Google',
+      providerId: 'google'
     }
   ]
 }
 
 //
+// ========================================
 // GROQ
+// ========================================
 //
 
 export async function fetchGroqModels(): Promise<Model[]> {
@@ -114,7 +130,9 @@ export async function fetchGroqModels(): Promise<Model[]> {
 }
 
 //
+// ========================================
 // OPENROUTER
+// ========================================
 //
 
 export async function fetchOpenRouterModels(): Promise<Model[]> {
@@ -128,26 +146,14 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
       providerId: 'openrouter'
     },
     {
-      id: 'anthropic/claude-sonnet-4',
-      name: 'Claude Sonnet 4',
+      id: 'google/gemini-2.0-flash-001',
+      name: 'Gemini 2.0 Flash',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     },
     {
-      id: 'google/gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro',
-      provider: 'OpenRouter',
-      providerId: 'openrouter'
-    },
-    {
-      id: 'deepseek/deepseek-chat',
-      name: 'DeepSeek Chat',
-      provider: 'OpenRouter',
-      providerId: 'openrouter'
-    },
-    {
-      id: 'meta-llama/llama-3.3-70b-instruct',
-      name: 'Llama 3.3 70B',
+      id: 'meta-llama/llama-3.1-70b-instruct',
+      name: 'Llama 3.1 70B',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     },
@@ -158,14 +164,8 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
       providerId: 'openrouter'
     },
     {
-      id: 'mistralai/mistral-small-3.1',
-      name: 'Mistral Small 3.1',
-      provider: 'OpenRouter',
-      providerId: 'openrouter'
-    },
-    {
-      id: 'cohere/command-r-plus',
-      name: 'Command R+',
+      id: 'deepseek/deepseek-chat-v3-0324',
+      name: 'DeepSeek V3',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     }
@@ -173,7 +173,9 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
 }
 
 //
+// ========================================
 // SILICONFLOW
+// ========================================
 //
 
 export async function fetchSiliconModels(): Promise<Model[]> {
@@ -183,12 +185,6 @@ export async function fetchSiliconModels(): Promise<Model[]> {
     {
       id: 'deepseek-ai/DeepSeek-V3',
       name: 'DeepSeek V3',
-      provider: 'SiliconFlow',
-      providerId: 'silicon'
-    },
-    {
-      id: 'deepseek-ai/DeepSeek-R1',
-      name: 'DeepSeek R1',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     },
@@ -211,7 +207,7 @@ export async function fetchSiliconModels(): Promise<Model[]> {
       providerId: 'silicon'
     },
     {
-      id: 'THUDM/GLM-4-9B-Chat',
+      id: 'THUDM/glm-4-9b-chat',
       name: 'GLM 4 9B',
       provider: 'SiliconFlow',
       providerId: 'silicon'
@@ -220,7 +216,9 @@ export async function fetchSiliconModels(): Promise<Model[]> {
 }
 
 //
+// ========================================
 // OLLAMA
+// ========================================
 //
 
 export async function fetchOllamaModels(): Promise<Model[]> {
@@ -228,7 +226,9 @@ export async function fetchOllamaModels(): Promise<Model[]> {
 }
 
 //
+// ========================================
 // GATEWAY
+// ========================================
 //
 
 export async function fetchGatewayModels(): Promise<Model[]> {
@@ -253,7 +253,9 @@ export async function fetchGatewayModels(): Promise<Model[]> {
 }
 
 //
+// ========================================
 // FINAL
+// ========================================
 //
 
 export async function fetchAvailableModels(): Promise<ModelsByProvider> {
