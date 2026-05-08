@@ -21,7 +21,7 @@ function dedupeModels(models: Model[]): Model[] {
   const seen = new Set<string>()
 
   return models.filter(model => {
-    const key = `${model.provider}|${model.id}`
+    const key = `${model.providerId}:${model.id}`
 
     if (seen.has(key)) return false
 
@@ -44,38 +44,9 @@ function groupByProvider(models: Model[]): ModelsByProvider {
 }
 
 //
-// =====================================
-// OPENAI
-// =====================================
-//
-
-export async function fetchOpenAIModels(): Promise<Model[]> {
-  return [
-    {
-      id: 'gpt-5',
-      name: 'GPT-5',
-      provider: 'OpenAI',
-      providerId: 'openai'
-    },
-    {
-      id: 'gpt-5-mini',
-      name: 'GPT-5 Mini',
-      provider: 'OpenAI',
-      providerId: 'openai'
-    },
-    {
-      id: 'gpt-4.1',
-      name: 'GPT-4.1',
-      provider: 'OpenAI',
-      providerId: 'openai'
-    }
-  ]
-}
-
-//
-// =====================================
-// GOOGLE
-// =====================================
+// =========================
+// GOOGLE GEMINI
+// =========================
 //
 
 export async function fetchGoogleModels(): Promise<Model[]> {
@@ -96,7 +67,7 @@ export async function fetchGoogleModels(): Promise<Model[]> {
     },
     {
       id: 'gemini-2.5-flash-lite',
-      name: 'Gemini Flash Lite',
+      name: 'Gemini 2.5 Flash Lite',
       provider: 'Google',
       providerId: 'google'
     },
@@ -110,181 +81,126 @@ export async function fetchGoogleModels(): Promise<Model[]> {
 }
 
 //
-// =====================================
-// ANTHROPIC
-// =====================================
+// =========================
+// GROQ
+// =========================
 //
 
-export async function fetchAnthropicModels(): Promise<Model[]> {
+export async function fetchGroqModels(): Promise<Model[]> {
+  if (!isProviderEnabled('groq')) return []
+
   return [
-    {
-      id: 'claude-opus-4',
-      name: 'Claude Opus 4',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
-    },
-    {
-      id: 'claude-sonnet-4',
-      name: 'Claude Sonnet 4',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
-    },
-    {
-      id: 'claude-3-5-haiku',
-      name: 'Claude Haiku',
-      provider: 'Anthropic',
-      providerId: 'anthropic'
-    }
-  ]
-}
-
-//
-// =====================================
-// DEEPSEEK
-// =====================================
-//
-
-export async function fetchDeepSeekModels(): Promise<Model[]> {
-  return [
-    {
-      id: 'deepseek-r1',
-      name: 'DeepSeek R1',
-      provider: 'DeepSeek',
-      providerId: 'openai-compatible'
-    },
-    {
-      id: 'deepseek-v3',
-      name: 'DeepSeek V3',
-      provider: 'DeepSeek',
-      providerId: 'openai-compatible'
-    }
-  ]
-}
-
-//
-// =====================================
-// xAI / GROK
-// =====================================
-//
-
-export async function fetchGrokModels(): Promise<Model[]> {
-  return [
-    {
-      id: 'grok-3',
-      name: 'Grok 3',
-      provider: 'xAI',
-      providerId: 'openai-compatible'
-    },
-    {
-      id: 'grok-3-mini',
-      name: 'Grok 3 Mini',
-      provider: 'xAI',
-      providerId: 'openai-compatible'
-    }
-  ]
-}
-
-//
-// =====================================
-// META
-// =====================================
-//
-
-export async function fetchMetaModels(): Promise<Model[]> {
-  return [
-    {
-      id: 'llama-4-maverick',
-      name: 'Llama 4 Maverick',
-      provider: 'Meta',
-      providerId: 'groq'
-    },
     {
       id: 'llama-3.3-70b-versatile',
       name: 'Llama 3.3 70B',
-      provider: 'Meta',
+      provider: 'Groq',
       providerId: 'groq'
-    }
-  ]
-}
-
-//
-// =====================================
-// MISTRAL
-// =====================================
-//
-
-export async function fetchMistralModels(): Promise<Model[]> {
-  return [
-    {
-      id: 'mistral-large',
-      name: 'Mistral Large',
-      provider: 'Mistral',
-      providerId: 'openai-compatible'
     },
     {
-      id: 'mixtral-8x7b',
-      name: 'Mixtral 8x7B',
-      provider: 'Mistral',
+      id: 'llama-3.1-8b-instant',
+      name: 'Llama 3.1 8B',
+      provider: 'Groq',
+      providerId: 'groq'
+    },
+    {
+      id: 'gemma2-9b-it',
+      name: 'Gemma 2 9B',
+      provider: 'Groq',
       providerId: 'groq'
     }
   ]
 }
 
 //
-// =====================================
-// NVIDIA
-// =====================================
+// =========================
+// OPENROUTER
+// =========================
 //
 
-export async function fetchNvidiaModels(): Promise<Model[]> {
+export async function fetchOpenRouterModels(): Promise<Model[]> {
+  if (!isProviderEnabled('openrouter')) return []
+
   return [
     {
-      id: 'nvidia-nemotron',
-      name: 'NVIDIA Nemotron',
-      provider: 'NVIDIA',
-      providerId: 'openai-compatible'
+      id: 'openai/gpt-4o',
+      name: 'GPT-4o',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'openai/gpt-4.1-mini',
+      name: 'GPT-4.1 Mini',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'anthropic/claude-3.5-sonnet',
+      name: 'Claude 3.5 Sonnet',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'google/gemini-2.0-flash-001',
+      name: 'Gemini Flash',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'meta-llama/llama-3.1-70b-instruct',
+      name: 'Meta Llama 3.1 70B',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'mistralai/mistral-7b-instruct',
+      name: 'Mistral 7B',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
     }
   ]
 }
 
 //
-// =====================================
-// PERPLEXITY
-// =====================================
+// =========================
+// SILICONFLOW
+// =========================
 //
 
-export async function fetchPerplexityModels(): Promise<Model[]> {
+export async function fetchSiliconModels(): Promise<Model[]> {
+  if (!isProviderEnabled('silicon')) return []
+
   return [
     {
-      id: 'sonar-pro',
-      name: 'Perplexity Sonar Pro',
-      provider: 'Perplexity',
-      providerId: 'openai-compatible'
+      id: 'deepseek-ai/DeepSeek-R1',
+      name: 'DeepSeek R1',
+      provider: 'SiliconFlow',
+      providerId: 'silicon'
+    },
+    {
+      id: 'deepseek-ai/DeepSeek-V3',
+      name: 'DeepSeek V3',
+      provider: 'SiliconFlow',
+      providerId: 'silicon'
+    },
+    {
+      id: 'Qwen/Qwen2.5-Coder-32B-Instruct',
+      name: 'Qwen 2.5 Coder',
+      provider: 'SiliconFlow',
+      providerId: 'silicon'
+    },
+    {
+      id: 'meta-llama/Llama-3.3-70B-Instruct',
+      name: 'Llama 3.3 70B Instruct',
+      provider: 'SiliconFlow',
+      providerId: 'silicon'
     }
   ]
 }
 
 //
-// =====================================
-// CODING
-// =====================================
-//
-
-export async function fetchCodingModels(): Promise<Model[]> {
-  return [
-    {
-      id: 'qwen-coder',
-      name: 'Qwen Coder',
-      provider: 'Coding',
-      providerId: 'openai-compatible'
-    }
-  ]
-}
-
-//
-// =====================================
+// =========================
 // OLLAMA
-// =====================================
+// =========================
 //
 
 export async function fetchOllamaModels(): Promise<Model[]> {
@@ -296,7 +212,7 @@ export async function fetchOllamaModels(): Promise<Model[]> {
     })
 
     if (!res.ok) {
-      throw new Error('Ollama offline')
+      return []
     }
 
     const data = await res.json()
@@ -313,9 +229,9 @@ export async function fetchOllamaModels(): Promise<Model[]> {
 }
 
 //
-// =====================================
+// =========================
 // GATEWAY
-// =====================================
+// =========================
 //
 
 export async function fetchGatewayModels(): Promise<Model[]> {
@@ -340,9 +256,9 @@ export async function fetchGatewayModels(): Promise<Model[]> {
 }
 
 //
-// =====================================
+// =========================
 // FINAL
-// =====================================
+// =========================
 //
 
 export async function fetchAvailableModels(): Promise<ModelsByProvider> {
@@ -353,49 +269,31 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
   }
 
   const [
-    openai,
     google,
-    anthropic,
-    deepseek,
-    grok,
-    meta,
-    mistral,
-    nvidia,
-    perplexity,
-    coding,
+    groq,
+    openrouter,
+    silicon,
     ollama,
     gateway
   ] = await Promise.all([
-    fetchOpenAIModels(),
     fetchGoogleModels(),
-    fetchAnthropicModels(),
-    fetchDeepSeekModels(),
-    fetchGrokModels(),
-    fetchMetaModels(),
-    fetchMistralModels(),
-    fetchNvidiaModels(),
-    fetchPerplexityModels(),
-    fetchCodingModels(),
+    fetchGroqModels(),
+    fetchOpenRouterModels(),
+    fetchSiliconModels(),
     fetchOllamaModels(),
     fetchGatewayModels()
   ])
 
-  const merged = dedupeModels([
-    ...openai,
-    ...google,
-    ...anthropic,
-    ...deepseek,
-    ...grok,
-    ...meta,
-    ...mistral,
-    ...nvidia,
-    ...perplexity,
-    ...coding,
-    ...ollama,
-    ...gateway
-  ])
-
-  const grouped = groupByProvider(merged)
+  const grouped = groupByProvider(
+    dedupeModels([
+      ...google,
+      ...groq,
+      ...openrouter,
+      ...silicon,
+      ...ollama,
+      ...gateway
+    ])
+  )
 
   const normalized = Object.fromEntries(
     Object.entries(grouped).map(([k, v]) => [k, sortModels(v)])
