@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 
-import { Check, ChevronDown, Zap, Brain, Scale } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 
 import {
   MODEL_SELECTION_COOKIE,
@@ -29,22 +29,14 @@ function modelKey(model: Model): string {
   return `${model.providerId}:${model.id}`
 }
 
-// FIX [object Object] - Force string output
 function safeModelName(model: Model): string {
-  try {
-    const name = model?.name
-    const id = model?.id
-    
-    if (typeof name === 'string' && name.length > 0) {
-      return name
-    }
-    if (typeof id === 'string' && id.length > 0) {
-      return id
-    }
-    return 'Unknown Model'
-  } catch (e) {
-    return 'Unknown Model'
+  if (typeof model?.name === 'string' && model.name.length > 0) {
+    return model.name
   }
+  if (typeof model?.id === 'string' && model.id.length > 0) {
+    return model.id
+  }
+  return 'Unknown Model'
 }
 
 const PROVIDER_LOGO_BY_ID: Record<string, string> = {
@@ -55,7 +47,8 @@ const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   'openai-compatible': '/providers/logos/openai-compatible.svg',
   ollama: '/providers/logos/ollama.svg',
   groq: '/providers/logos/groq.svg',
-  openrouter: '/providers/logos/openrouter.svg'
+  openrouter: '/providers/logos/openrouter.svg',
+  siliconflow: '/providers/logos/siliconflow.svg'
 }
 
 function ProviderLogo({ providerId }: { providerId: string }) {
@@ -75,42 +68,6 @@ function ProviderLogo({ providerId }: { providerId: string }) {
   )
 }
 
-const CATEGORY_ICONS: Record<string, any> = {
-  'Fast Tasks': Zap,
-  'Complex Tasks': Brain,
-  'Balanced': Scale
-}
-
-function categorizeModel(model: Model): string {
-  const name = safeModelName(model).toLowerCase()
-  
-  if (
-    name.includes('instant') ||
-    name.includes('flash') ||
-    name.includes('lite') ||
-    name.includes('mini') ||
-    name.includes('8b') ||
-    name.includes('7b') ||
-    name.includes('haiku') ||
-    name.includes('3.5')
-  ) {
-    return 'Fast Tasks'
-  }
-  
-  if (
-    name.includes('gpt-4') ||
-    name.includes('claude') ||
-    name.includes('pro') ||
-    name.includes('opus') ||
-    name.includes('70b') ||
-    name.includes('o1')
-  ) {
-    return 'Complex Tasks'
-  }
-  
-  return 'Balanced'
-}
-
 interface ModelSelectorClientProps {
   data: ModelSelectorData
 }
@@ -120,7 +77,6 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
   const [selectedModelKey, setSelectedModelKey] = useState<string>(
     data.selectedModelKey
   )
-  const [viewMode, setViewMode] = useState<'category' | 'provider'>('category')
 
   const providerEntries = useMemo(
     () =>
@@ -129,24 +85,6 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
       ),
     [data.modelsByProvider]
   )
-
-  const categoryEntries = useMemo(() => {
-    const allModels = providerEntries.flatMap(([, models]) => models)
-    const grouped: Record<string, Model[]> = {}
-    
-    allModels.forEach(model => {
-      const category = categorizeModel(model)
-      if (!grouped[category]) {
-        grouped[category] = []
-      }
-      grouped[category].push(model)
-    })
-    
-    return Object.entries(grouped).sort(([a], [b]) => {
-      const order = ['Fast Tasks', 'Balanced', 'Complex Tasks']
-      return order.indexOf(a) - order.indexOf(b)
-    })
-  }, [providerEntries])
 
   const selectableModels = useMemo(
     () => providerEntries.flatMap(([, models]) => models),
@@ -207,124 +145,52 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
           />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" align="end" sideOffset={6}>
+      <PopoverContent className="w-[300px] p-0" align="end" sideOffset={6}>
         <Command>
           <CommandInput placeholder="Search models..." />
-          
-          <div className="flex gap-1 p-2 border-b">
-            <Button
-              variant={viewMode === 'category' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="flex-1 h-7 text-xs"
-              onClick={() => setViewMode('category')}
-            >
-              By Task
-            </Button>
-            <Button
-              variant={viewMode === 'provider' ? 'secondary' : 'ghost'}
-              size="sm"
-              className="flex-1 h-7 text-xs"
-              onClick={() => setViewMode('provider')}
-            >
-              By Provider
-            </Button>
-          </div>
-
           <CommandList>
             <CommandEmpty>No model found.</CommandEmpty>
-            
-            {viewMode === 'category' ? (
-              categoryEntries.map(([category, models]) => {
-                const Icon = CATEGORY_ICONS[category] || Scale
-                return (
-                  <CommandGroup 
-                    key={category} 
-                    heading={
-                      <div className="flex items-center gap-1.5">
-                        <Icon className="h-3.5 w-3.5" />
-                        <span>{category}</span>
-                      </div>
-                    }
-                  >
-                    {models.map(model => {
-                      const value = modelKey(model)
-                      const isSelected = selectedModelKey === value
-                      const displayName = safeModelName(model)
-                      return (
-                        <CommandItem
-                          key={value}
-                          value={`${value} ${displayName}`}
-                          onSelect={() => {
-                            const nextModel = selectableByKey[value]
-                            if (!nextModel) return
+            {providerEntries.map(([provider, models]) => (
+              <CommandGroup key={provider} heading={provider}>
+                {models.map(model => {
+                  const value = modelKey(model)
+                  const isSelected = selectedModelKey === value
+                  const displayName = safeModelName(model)
+                  return (
+                    <CommandItem
+                      key={value}
+                      value={`${value} ${displayName} ${provider}`}
+                      onSelect={() => {
+                        const nextModel = selectableByKey[value]
+                        if (!nextModel) {
+                          return
+                        }
 
-                            setSelectedModelKey(value)
-                            setCookie(
-                              MODEL_SELECTION_COOKIE,
-                              serializeModelSelectionCookie({
-                                providerId: nextModel.providerId,
-                                modelId: nextModel.id
-                              })
-                            )
-                            setOpen(false)
-                          }}
-                          className="cursor-pointer"
-                        >
-                          <Check
-                            className={cn(
-                              'h-4 w-4',
-                              isSelected ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          <ProviderLogo providerId={model.providerId} />
-                          <span className="truncate">{displayName}</span>
-                        </CommandItem>
-                      )
-                    })}
-                  </CommandGroup>
-                )
-              })
-            ) : (
-              providerEntries.map(([provider, models]) => (
-                <CommandGroup key={provider} heading={provider}>
-                  {models.map(model => {
-                    const value = modelKey(model)
-                    const isSelected = selectedModelKey === value
-                    const displayName = safeModelName(model)
-                    return (
-                      <CommandItem
-                        key={value}
-                        value={`${value} ${displayName} ${provider}`}
-                        onSelect={() => {
-                          const nextModel = selectableByKey[value]
-                          if (!nextModel) return
-
-                          setSelectedModelKey(value)
-                          setCookie(
-                            MODEL_SELECTION_COOKIE,
-                            serializeModelSelectionCookie({
-                              providerId: nextModel.providerId,
-                              modelId: nextModel.id
-                            })
-                          )
-                          setOpen(false)
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <Check
-                          className={cn(
-                            'h-4 w-4',
-                            isSelected ? 'opacity-100' : 'opacity-0'
-                          )}
-                        />
-                        <ProviderLogo providerId={model.providerId} />
-                        <span className="truncate">{displayName}</span>
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              ))
-            )}
+                        setSelectedModelKey(value)
+                        setCookie(
+                          MODEL_SELECTION_COOKIE,
+                          serializeModelSelectionCookie({
+                            providerId: nextModel.providerId,
+                            modelId: nextModel.id
+                          })
+                        )
+                        setOpen(false)
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Check
+                        className={cn(
+                          'h-4 w-4',
+                          isSelected ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <ProviderLogo providerId={model.providerId} />
+                      <span className="truncate">{displayName}</span>
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
