@@ -13,7 +13,25 @@ const groq = createGroq({
 })
 
 //
-// ✅ OLLAMA (LOCAL)
+// ✅ OPENROUTER
+//
+const openrouter = createOpenAI({
+  name: 'openrouter',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1'
+})
+
+//
+// ✅ SILICONFLOW
+//
+const silicon = createOpenAI({
+  name: 'silicon',
+  apiKey: process.env.SILICONFLOW_API_KEY,
+  baseURL: 'https://api.siliconflow.cn/v1'
+})
+
+//
+// ✅ OLLAMA LOCAL
 //
 const ollama = createOpenAI({
   name: 'ollama',
@@ -29,6 +47,8 @@ const providers = {
   anthropic,
   google,
   groq,
+  openrouter,
+  silicon,
   ollama,
 
   'openai-compatible': createOpenAI({
@@ -47,7 +67,7 @@ const providers = {
 export const registry = createProviderRegistry(providers)
 
 //
-// ✅ MODEL RESOLVER
+// ✅ MODEL GETTER
 //
 export function getModel(model: string) {
   return registry.languageModel(
@@ -56,34 +76,41 @@ export function getModel(model: string) {
 }
 
 //
-// ⚠️ IMPORTANT FIX:
-// We STOP blocking providers in a way that breaks UI
-// Instead: ALWAYS show models, only block API calls if missing keys
+// ✅ PROVIDER ENABLE CHECK
 //
 export function isProviderEnabled(providerId: string): boolean {
   switch (providerId) {
     case 'openai':
-      return true
+      return !!process.env.OPENAI_API_KEY
 
     case 'anthropic':
-      return true
+      return !!process.env.ANTHROPIC_API_KEY
 
     case 'google':
-      return true
+      return !!process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
     case 'groq':
-      return true
+      return !!process.env.GROQ_API_KEY
+
+    case 'openrouter':
+      return !!process.env.OPENROUTER_API_KEY
+
+    case 'silicon':
+      return !!process.env.SILICONFLOW_API_KEY
 
     case 'ollama':
       return true
 
     case 'openai-compatible':
-      return true
+      return (
+        !!process.env.OPENAI_COMPATIBLE_API_KEY &&
+        !!process.env.OPENAI_COMPATIBLE_API_BASE_URL
+      )
 
     case 'gateway':
-      return true
+      return !!process.env.AI_GATEWAY_API_KEY
 
     default:
-      return true
+      return false
   }
 }
