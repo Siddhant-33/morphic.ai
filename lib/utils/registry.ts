@@ -6,15 +6,23 @@ import { createOpenAI, openai } from '@ai-sdk/openai'
 import { createProviderRegistry } from 'ai'
 
 //
-// ✅ GROQ
+// GOOGLE
 //
+
+const googleProvider = google
+
+//
+// GROQ
+//
+
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY
 })
 
 //
-// ✅ OPENROUTER
+// OPENROUTER
 //
+
 const openrouter = createOpenAI({
   name: 'openrouter',
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -22,8 +30,9 @@ const openrouter = createOpenAI({
 })
 
 //
-// ✅ SILICONFLOW
+// SILICONFLOW
 //
+
 const silicon = createOpenAI({
   name: 'silicon',
   apiKey: process.env.SILICONFLOW_API_KEY,
@@ -31,8 +40,9 @@ const silicon = createOpenAI({
 })
 
 //
-// ✅ OLLAMA LOCAL
+// OLLAMA
 //
+
 const ollama = createOpenAI({
   name: 'ollama',
   apiKey: 'ollama',
@@ -40,15 +50,22 @@ const ollama = createOpenAI({
 })
 
 //
-// ✅ PROVIDERS
+// PROVIDERS
 //
+
 const providers = {
   openai,
+
   anthropic,
-  google,
+
+  google: googleProvider,
+
   groq,
+
   openrouter,
+
   silicon,
+
   ollama,
 
   'openai-compatible': createOpenAI({
@@ -62,13 +79,15 @@ const providers = {
 }
 
 //
-// ✅ REGISTRY
+// REGISTRY
 //
+
 export const registry = createProviderRegistry(providers)
 
 //
-// ✅ MODEL GETTER
+// GET MODEL
 //
+
 export function getModel(model: string) {
   return registry.languageModel(
     model as Parameters<typeof registry.languageModel>[0]
@@ -76,16 +95,11 @@ export function getModel(model: string) {
 }
 
 //
-// ✅ PROVIDER ENABLE CHECK
+// ENABLED PROVIDERS
 //
+
 export function isProviderEnabled(providerId: string): boolean {
   switch (providerId) {
-    case 'openai':
-      return !!process.env.OPENAI_API_KEY
-
-    case 'anthropic':
-      return !!process.env.ANTHROPIC_API_KEY
-
     case 'google':
       return !!process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
@@ -97,6 +111,12 @@ export function isProviderEnabled(providerId: string): boolean {
 
     case 'silicon':
       return !!process.env.SILICONFLOW_API_KEY
+
+    case 'anthropic':
+      return !!process.env.ANTHROPIC_API_KEY
+
+    case 'openai':
+      return !!process.env.OPENAI_API_KEY
 
     case 'ollama':
       return true
