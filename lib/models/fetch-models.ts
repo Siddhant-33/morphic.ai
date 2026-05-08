@@ -44,9 +44,7 @@ function groupByProvider(models: Model[]): ModelsByProvider {
 }
 
 //
-// =========================
-// GOOGLE GEMINI
-// =========================
+// GOOGLE
 //
 
 export async function fetchGoogleModels(): Promise<Model[]> {
@@ -76,26 +74,12 @@ export async function fetchGoogleModels(): Promise<Model[]> {
       name: 'Gemini 2.0 Flash',
       provider: 'Google',
       providerId: 'google'
-    },
-    {
-      id: 'gemini-1.5-pro',
-      name: 'Gemini 1.5 Pro',
-      provider: 'Google',
-      providerId: 'google'
-    },
-    {
-      id: 'gemini-1.5-flash',
-      name: 'Gemini 1.5 Flash',
-      provider: 'Google',
-      providerId: 'google'
     }
   ]
 }
 
 //
-// =========================
 // GROQ
-// =========================
 //
 
 export async function fetchGroqModels(): Promise<Model[]> {
@@ -110,31 +94,19 @@ export async function fetchGroqModels(): Promise<Model[]> {
     },
     {
       id: 'llama-3.1-8b-instant',
-      name: 'Llama 3.1 8B Instant',
+      name: 'Llama 3.1 8B',
       provider: 'Groq',
       providerId: 'groq'
     },
     {
-      id: 'llama3-70b-8192',
-      name: 'Llama 3 70B',
+      id: 'openai/gpt-oss-120b',
+      name: 'GPT OSS 120B',
       provider: 'Groq',
       providerId: 'groq'
     },
     {
-      id: 'llama3-8b-8192',
-      name: 'Llama 3 8B',
-      provider: 'Groq',
-      providerId: 'groq'
-    },
-    {
-      id: 'gemma2-9b-it',
-      name: 'Gemma 2 9B',
-      provider: 'Groq',
-      providerId: 'groq'
-    },
-    {
-      id: 'distil-whisper-large-v3-en',
-      name: 'Whisper Large V3',
+      id: 'openai/gpt-oss-20b',
+      name: 'GPT OSS 20B',
       provider: 'Groq',
       providerId: 'groq'
     }
@@ -142,9 +114,7 @@ export async function fetchGroqModels(): Promise<Model[]> {
 }
 
 //
-// =========================
 // OPENROUTER
-// =========================
 //
 
 export async function fetchOpenRouterModels(): Promise<Model[]> {
@@ -158,20 +128,14 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
       providerId: 'openrouter'
     },
     {
-      id: 'meta-llama/llama-3.1-70b-instruct',
-      name: 'Llama 3.1 70B',
+      id: 'anthropic/claude-sonnet-4',
+      name: 'Claude Sonnet 4',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     },
     {
-      id: 'qwen/qwen-2.5-72b-instruct',
-      name: 'Qwen 2.5 72B',
-      provider: 'OpenRouter',
-      providerId: 'openrouter'
-    },
-    {
-      id: 'google/gemini-flash-1.5',
-      name: 'Gemini Flash 1.5',
+      id: 'google/gemini-2.5-pro',
+      name: 'Gemini 2.5 Pro',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     },
@@ -182,8 +146,26 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
       providerId: 'openrouter'
     },
     {
-      id: 'mistralai/mistral-7b-instruct',
-      name: 'Mistral 7B Instruct',
+      id: 'meta-llama/llama-3.3-70b-instruct',
+      name: 'Llama 3.3 70B',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'qwen/qwen-2.5-72b-instruct',
+      name: 'Qwen 2.5 72B',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'mistralai/mistral-small-3.1',
+      name: 'Mistral Small 3.1',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
+      id: 'cohere/command-r-plus',
+      name: 'Command R+',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     }
@@ -191,9 +173,7 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
 }
 
 //
-// =========================
 // SILICONFLOW
-// =========================
 //
 
 export async function fetchSiliconModels(): Promise<Model[]> {
@@ -201,14 +181,20 @@ export async function fetchSiliconModels(): Promise<Model[]> {
 
   return [
     {
+      id: 'deepseek-ai/DeepSeek-V3',
+      name: 'DeepSeek V3',
+      provider: 'SiliconFlow',
+      providerId: 'silicon'
+    },
+    {
       id: 'deepseek-ai/DeepSeek-R1',
       name: 'DeepSeek R1',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     },
     {
-      id: 'deepseek-ai/DeepSeek-V3',
-      name: 'DeepSeek V3',
+      id: 'Qwen/Qwen2.5-72B-Instruct',
+      name: 'Qwen 2.5 72B',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     },
@@ -225,14 +211,8 @@ export async function fetchSiliconModels(): Promise<Model[]> {
       providerId: 'silicon'
     },
     {
-      id: 'THUDM/glm-4-9b-chat',
+      id: 'THUDM/GLM-4-9B-Chat',
       name: 'GLM 4 9B',
-      provider: 'SiliconFlow',
-      providerId: 'silicon'
-    },
-    {
-      id: 'internlm/internlm2_5-20b-chat',
-      name: 'InternLM 2.5',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     }
@@ -240,40 +220,15 @@ export async function fetchSiliconModels(): Promise<Model[]> {
 }
 
 //
-// =========================
 // OLLAMA
-// =========================
 //
 
 export async function fetchOllamaModels(): Promise<Model[]> {
-  if (!isProviderEnabled('ollama')) return []
-
-  try {
-    const res = await fetch('http://127.0.0.1:11434/api/tags', {
-      signal: AbortSignal.timeout(1500)
-    })
-
-    if (!res.ok) {
-      return []
-    }
-
-    const data = await res.json()
-
-    return (data.models || []).map((m: any) => ({
-      id: m.name,
-      name: m.name,
-      provider: 'Ollama',
-      providerId: 'ollama'
-    }))
-  } catch {
-    return []
-  }
+  return []
 }
 
 //
-// =========================
 // GATEWAY
-// =========================
 //
 
 export async function fetchGatewayModels(): Promise<Model[]> {
@@ -298,9 +253,7 @@ export async function fetchGatewayModels(): Promise<Model[]> {
 }
 
 //
-// =========================
 // FINAL
-// =========================
 //
 
 export async function fetchAvailableModels(): Promise<ModelsByProvider> {
@@ -315,14 +268,12 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
     groq,
     openrouter,
     silicon,
-    ollama,
     gateway
   ] = await Promise.all([
     fetchGoogleModels(),
     fetchGroqModels(),
     fetchOpenRouterModels(),
     fetchSiliconModels(),
-    fetchOllamaModels(),
     fetchGatewayModels()
   ])
 
@@ -332,7 +283,6 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
       ...groq,
       ...openrouter,
       ...silicon,
-      ...ollama,
       ...gateway
     ])
   )
