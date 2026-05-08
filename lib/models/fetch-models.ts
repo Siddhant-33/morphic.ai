@@ -23,9 +23,7 @@ function dedupeModels(models: Model[]): Model[] {
   return models.filter(model => {
     const key = `${model.providerId}:${model.id}`
 
-    if (seen.has(key)) {
-      return false
-    }
+    if (seen.has(key)) return false
 
     seen.add(key)
 
@@ -46,9 +44,9 @@ function groupByProvider(models: Model[]): ModelsByProvider {
 }
 
 //
-// ===================================
+// =========================
 // GOOGLE GEMINI
-// ===================================
+// =========================
 //
 
 export async function fetchGoogleModels(): Promise<Model[]> {
@@ -78,14 +76,26 @@ export async function fetchGoogleModels(): Promise<Model[]> {
       name: 'Gemini 2.0 Flash',
       provider: 'Google',
       providerId: 'google'
+    },
+    {
+      id: 'gemini-1.5-pro',
+      name: 'Gemini 1.5 Pro',
+      provider: 'Google',
+      providerId: 'google'
+    },
+    {
+      id: 'gemini-1.5-flash',
+      name: 'Gemini 1.5 Flash',
+      provider: 'Google',
+      providerId: 'google'
     }
   ]
 }
 
 //
-// ===================================
+// =========================
 // GROQ
-// ===================================
+// =========================
 //
 
 export async function fetchGroqModels(): Promise<Model[]> {
@@ -100,7 +110,31 @@ export async function fetchGroqModels(): Promise<Model[]> {
     },
     {
       id: 'llama-3.1-8b-instant',
-      name: 'Llama 3.1 8B',
+      name: 'Llama 3.1 8B Instant',
+      provider: 'Groq',
+      providerId: 'groq'
+    },
+    {
+      id: 'llama3-70b-8192',
+      name: 'Llama 3 70B',
+      provider: 'Groq',
+      providerId: 'groq'
+    },
+    {
+      id: 'llama3-8b-8192',
+      name: 'Llama 3 8B',
+      provider: 'Groq',
+      providerId: 'groq'
+    },
+    {
+      id: 'gemma2-9b-it',
+      name: 'Gemma 2 9B',
+      provider: 'Groq',
+      providerId: 'groq'
+    },
+    {
+      id: 'distil-whisper-large-v3-en',
+      name: 'Whisper Large V3',
       provider: 'Groq',
       providerId: 'groq'
     }
@@ -108,9 +142,9 @@ export async function fetchGroqModels(): Promise<Model[]> {
 }
 
 //
-// ===================================
+// =========================
 // OPENROUTER
-// ===================================
+// =========================
 //
 
 export async function fetchOpenRouterModels(): Promise<Model[]> {
@@ -120,12 +154,6 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
     {
       id: 'openai/gpt-4o-mini',
       name: 'GPT-4o Mini',
-      provider: 'OpenRouter',
-      providerId: 'openrouter'
-    },
-    {
-      id: 'google/gemini-flash-1.5',
-      name: 'Gemini Flash 1.5',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     },
@@ -142,14 +170,20 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
       providerId: 'openrouter'
     },
     {
+      id: 'google/gemini-flash-1.5',
+      name: 'Gemini Flash 1.5',
+      provider: 'OpenRouter',
+      providerId: 'openrouter'
+    },
+    {
       id: 'deepseek/deepseek-chat',
       name: 'DeepSeek Chat',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     },
     {
-      id: 'deepseek/deepseek-r1',
-      name: 'DeepSeek R1',
+      id: 'mistralai/mistral-7b-instruct',
+      name: 'Mistral 7B Instruct',
       provider: 'OpenRouter',
       providerId: 'openrouter'
     }
@@ -157,9 +191,9 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
 }
 
 //
-// ===================================
+// =========================
 // SILICONFLOW
-// ===================================
+// =========================
 //
 
 export async function fetchSiliconModels(): Promise<Model[]> {
@@ -167,26 +201,38 @@ export async function fetchSiliconModels(): Promise<Model[]> {
 
   return [
     {
-      id: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
-      name: 'DeepSeek R1 Distill',
+      id: 'deepseek-ai/DeepSeek-R1',
+      name: 'DeepSeek R1',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     },
     {
-      id: 'Qwen/Qwen2.5-72B-Instruct',
-      name: 'Qwen 2.5 72B',
+      id: 'deepseek-ai/DeepSeek-V3',
+      name: 'DeepSeek V3',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     },
     {
-      id: 'meta-llama/Meta-Llama-3.1-70B-Instruct',
-      name: 'Llama 3.1 70B Instruct',
+      id: 'Qwen/Qwen2.5-Coder-32B-Instruct',
+      name: 'Qwen 2.5 Coder',
+      provider: 'SiliconFlow',
+      providerId: 'silicon'
+    },
+    {
+      id: 'meta-llama/Llama-3.3-70B-Instruct',
+      name: 'Llama 3.3 70B',
+      provider: 'SiliconFlow',
+      providerId: 'silicon'
+    },
+    {
+      id: 'THUDM/glm-4-9b-chat',
+      name: 'GLM 4 9B',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     },
     {
       id: 'internlm/internlm2_5-20b-chat',
-      name: 'InternLM 2.5 20B',
+      name: 'InternLM 2.5',
       provider: 'SiliconFlow',
       providerId: 'silicon'
     }
@@ -194,9 +240,9 @@ export async function fetchSiliconModels(): Promise<Model[]> {
 }
 
 //
-// ===================================
+// =========================
 // OLLAMA
-// ===================================
+// =========================
 //
 
 export async function fetchOllamaModels(): Promise<Model[]> {
@@ -225,9 +271,9 @@ export async function fetchOllamaModels(): Promise<Model[]> {
 }
 
 //
-// ===================================
+// =========================
 // GATEWAY
-// ===================================
+// =========================
 //
 
 export async function fetchGatewayModels(): Promise<Model[]> {
@@ -252,9 +298,9 @@ export async function fetchGatewayModels(): Promise<Model[]> {
 }
 
 //
-// ===================================
-// FINAL MODEL LOADER
-// ===================================
+// =========================
+// FINAL
+// =========================
 //
 
 export async function fetchAvailableModels(): Promise<ModelsByProvider> {
@@ -280,22 +326,19 @@ export async function fetchAvailableModels(): Promise<ModelsByProvider> {
     fetchGatewayModels()
   ])
 
-  const merged = dedupeModels([
-    ...google,
-    ...groq,
-    ...openrouter,
-    ...silicon,
-    ...ollama,
-    ...gateway
-  ])
-
-  const grouped = groupByProvider(merged)
+  const grouped = groupByProvider(
+    dedupeModels([
+      ...google,
+      ...groq,
+      ...openrouter,
+      ...silicon,
+      ...ollama,
+      ...gateway
+    ])
+  )
 
   const normalized = Object.fromEntries(
-    Object.entries(grouped).map(([provider, models]) => [
-      provider,
-      sortModels(models)
-    ])
+    Object.entries(grouped).map(([k, v]) => [k, sortModels(v)])
   )
 
   modelsCache = {
