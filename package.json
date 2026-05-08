@@ -57,6 +57,7 @@
     "@vercel/analytics": "^1.5.0",
     "@vercel/otel": "^1.13.0",
     "ai": "^6.0.156",
+    "ai-sdk-ollama": "^3.8.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
     "cmdk": "1.0.0",
