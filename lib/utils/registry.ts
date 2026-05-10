@@ -16,7 +16,6 @@ const providers: Record<string, any> = {
   gateway: createGateway({  
     apiKey: process.env.AI_GATEWAY_API_KEY  
   }),  
-  // Custom providers  
   fireworks: createOpenAI({  
     apiKey: process.env.FIREWORKS_API_KEY,  
     baseURL: 'https://api.fireworks.ai/inference/v1'  
