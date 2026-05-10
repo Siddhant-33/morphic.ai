@@ -54,14 +54,14 @@ export async function fetchGoogleModels(): Promise<Model[]> {
   
   return [  
     {  
-      id: 'gemini-2.5-pro',  
-      name: 'Gemini 2.5 Pro',  
+      id: 'gemini-2.5-flash',  
+      name: 'Gemini 2.5 Flash',  
       provider: 'Google',  
       providerId: 'google'  
     },  
     {  
-      id: 'gemini-2.5-flash',  
-      name: 'Gemini 2.5 Flash',  
+      id: 'gemini-2.5-pro',  
+      name: 'Gemini 2.5 Pro',  
       provider: 'Google',  
       providerId: 'google'  
     },  
@@ -159,14 +159,14 @@ export async function fetchXaiModels(): Promise<Model[]> {
   
   return [  
     {  
-      id: 'grok-beta',  
-      name: 'Grok Beta',  
+      id: 'grok-2',  
+      name: 'Grok 2',  
       provider: 'xAI',  
       providerId: 'xai'  
     },  
     {  
-      id: 'grok-vision-beta',  
-      name: 'Grok Vision Beta',  
+      id: 'grok-beta',  
+      name: 'Grok Beta',  
       provider: 'xAI',  
       providerId: 'xai'  
     }  
