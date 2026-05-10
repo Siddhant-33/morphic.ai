@@ -25,7 +25,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   xai: 'xAI',  
   siliconflow: 'SiliconFlow',  
   openrouter: 'OpenRouter'  
-}  
+}
   
 function buildProviderOptions(  
   providerId: string,  
