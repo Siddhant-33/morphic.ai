@@ -29,26 +29,13 @@ function modelKey(model: Model): string {
   return `${model.providerId}:${model.id}`
 }
 
-function safeModelName(model: Model): string {
-  if (typeof model?.name === 'string' && model.name.length > 0) {
-    return model.name
-  }
-  if (typeof model?.id === 'string' && model.id.length > 0) {
-    return model.id
-  }
-  return 'Unknown Model'
-}
-
 const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   openai: '/providers/logos/openai.svg',
   anthropic: '/providers/logos/anthropic.svg',
   google: '/providers/logos/google.svg',
   gateway: '/providers/logos/gateway.svg',
   'openai-compatible': '/providers/logos/openai-compatible.svg',
-  ollama: '/providers/logos/ollama.svg',
-  groq: '/providers/logos/groq.svg',
-  openrouter: '/providers/logos/openrouter.svg',
-  siliconflow: '/providers/logos/siliconflow.svg'
+  ollama: '/providers/logos/ollama.svg'
 }
 
 function ProviderLogo({ providerId }: { providerId: string }) {
@@ -135,7 +122,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
         >
           <ProviderLogo providerId={selectedModel.providerId} />
           <span className="truncate max-w-40 text-xs font-medium">
-            {safeModelName(selectedModel)}
+            {selectedModel.name}
           </span>
           <ChevronDown
             className={cn(
@@ -155,11 +142,10 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                 {models.map(model => {
                   const value = modelKey(model)
                   const isSelected = selectedModelKey === value
-                  const displayName = safeModelName(model)
                   return (
                     <CommandItem
                       key={value}
-                      value={`${value} ${displayName} ${provider}`}
+                      value={`${value} ${model.name} ${provider}`}
                       onSelect={() => {
                         const nextModel = selectableByKey[value]
                         if (!nextModel) {
@@ -185,7 +171,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                         )}
                       />
                       <ProviderLogo providerId={model.providerId} />
-                      <span className="truncate">{displayName}</span>
+                      <span className="truncate">{model.name}</span>
                     </CommandItem>
                   )
                 })}
