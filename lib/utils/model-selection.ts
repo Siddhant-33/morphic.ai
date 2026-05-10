@@ -13,7 +13,6 @@ import { SearchMode } from '@/lib/types/search'
 import { isProviderEnabled } from '@/lib/utils/registry'
 
 const MODE_FALLBACK_ORDER: SearchMode[] = ['quick', 'adaptive']
-
 const PROVIDER_LABELS: Record<string, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic',
@@ -21,15 +20,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   ollama: 'Ollama',
   gateway: 'Gateway',
   'openai-compatible': 'OpenAI Compatible'
-}
-
-/**
- * ✅ FIX: normalize DEFAULT_MODEL safely
- * prevents TS errors if providerId is missing in config file
- */
-const SAFE_DEFAULT_MODEL: Model = {
-  ...DEFAULT_MODEL,
-  providerId: (DEFAULT_MODEL as any).providerId ?? 'google'
 }
 
 function buildProviderOptions(
@@ -43,6 +33,7 @@ function buildProviderOptions(
       }
     }
   }
+
   return undefined
 }
 
@@ -55,7 +46,9 @@ function pickFirstFetchedModel(
 
   for (const provider of providers) {
     const firstModel = modelsByProvider[provider]?.[0]
-    if (firstModel) return firstModel
+    if (firstModel) {
+      return firstModel
+    }
   }
 
   return null
@@ -81,19 +74,35 @@ function buildLocalCookieModel(providerId: string, modelId: string): Model {
 function resolveModelForMode(mode: SearchMode): Model | undefined {
   try {
     const model = getModelForMode(mode)
-    if (!model) return undefined
+    if (!model) {
+      return undefined
+    }
 
-    if (!isProviderEnabled(model.providerId)) return undefined
+    if (!isProviderEnabled(model.providerId)) {
+      console.warn(
+        `[ModelSelection] Provider "${model.providerId}" is not enabled for mode "${mode}"`
+      )
+      return undefined
+    }
 
     return model
   } catch (error) {
-    console.error(`[ModelSelection] mode error "${mode}":`, error)
+    console.error(
+      `[ModelSelection] Failed to load model configuration for mode "${mode}":`,
+      error
+    )
     return undefined
   }
 }
 
 /**
- * MAIN MODEL SELECTOR
+ * Determines which model to use based on search mode preference.
+ *
+ * Priority order:
+ * 1. Use cloud mode-specific model for the active mode when enabled
+ * 2. If the active mode has no enabled model, try remaining modes
+ * 3. Use DEFAULT_MODEL when its provider is enabled
+ * 4. Return null when no enabled models are available
  */
 export async function selectModel({
   searchMode,
@@ -105,17 +114,27 @@ export async function selectModel({
     )
 
     if (parsedCookie) {
-      if (isProviderEnabled(parsedCookie.providerId)) {
-        return buildLocalCookieModel(
-          parsedCookie.providerId,
-          parsedCookie.modelId
+      try {
+        if (!isProviderEnabled(parsedCookie.providerId)) {
+          console.warn(
+            `[ModelSelection] Saved model provider "${parsedCookie.providerId}" is not enabled.`
+          )
+        } else {
+          return buildLocalCookieModel(
+            parsedCookie.providerId,
+            parsedCookie.modelId
+          )
+        }
+      } catch (error) {
+        console.error(
+          '[ModelSelection] Failed to resolve model from cookie:',
+          error
         )
       }
     }
 
-    // ✅ FIX: safe default model usage
-    if (isProviderEnabled(SAFE_DEFAULT_MODEL.providerId)) {
-      return SAFE_DEFAULT_MODEL
+    if (isProviderEnabled(DEFAULT_MODEL.providerId)) {
+      return DEFAULT_MODEL
     }
 
     return pickFirstFetchedModel(await fetchAvailableModels())
@@ -126,17 +145,19 @@ export async function selectModel({
       ? searchMode
       : 'quick'
 
-  const modeOrder = Array.from(
+  const modePreferenceOrder: SearchMode[] = Array.from(
     new Set<SearchMode>([requestedMode, ...MODE_FALLBACK_ORDER])
   )
 
-  for (const mode of modeOrder) {
-    const model = resolveModelForMode(mode)
-    if (model) return model
+  for (const candidateMode of modePreferenceOrder) {
+    const model = resolveModelForMode(candidateMode)
+    if (model) {
+      return model
+    }
   }
 
-  if (isProviderEnabled(SAFE_DEFAULT_MODEL.providerId)) {
-    return SAFE_DEFAULT_MODEL
+  if (isProviderEnabled(DEFAULT_MODEL.providerId)) {
+    return DEFAULT_MODEL
   }
 
   return pickFirstFetchedModel(await fetchAvailableModels())
