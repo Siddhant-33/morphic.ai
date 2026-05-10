@@ -29,13 +29,18 @@ function modelKey(model: Model): string {
   return `${model.providerId}:${model.id}`
 }
 
-const PROVIDER_LOGO_BY_ID: Record<string, string> = {
-  openai: '/providers/logos/openai.svg',
-  anthropic: '/providers/logos/anthropic.svg',
-  google: '/providers/logos/google.svg',
-  gateway: '/providers/logos/gateway.svg',
-  'openai-compatible': '/providers/logos/openai-compatible.svg',
-  ollama: '/providers/logos/ollama.svg'
+const PROVIDER_LOGO_BY_ID: Record<string, string> = {  
+  openai: '/providers/logos/openai.svg',  
+  anthropic: '/providers/logos/anthropic.svg',  
+  google: '/providers/logos/google.svg',  
+  gateway: '/providers/logos/gateway.svg',  
+  'openai-compatible': '/providers/logos/openai-compatible.svg',  
+  ollama: '/providers/logos/ollama.svg',  
+  fireworks: '/providers/logos/fireworks.svg',  
+  deepseek: '/providers/logos/deepseek.svg',  
+  xai: '/providers/logos/xai.svg',  
+  siliconflow: '/providers/logos/siliconflow.svg',  
+  openrouter: '/providers/logos/openrouter.svg'  
 }
 
 function ProviderLogo({ providerId }: { providerId: string }) {
