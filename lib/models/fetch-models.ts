@@ -1,10 +1,40 @@
 import { createGateway } from '@ai-sdk/gateway'  
+  
 import { Model } from '@/lib/types/models'  
 import { isProviderEnabled } from '@/lib/utils/registry'  
   
 export type ModelsByProvider = Record<string, Model[]>  
   
 const MODEL_CACHE_TTL_MS = 2 * 60 * 1000  
+const DATE_SNAPSHOT_SUFFIX_REGEX = /-\d{4}-\d{2}-\d{2}$/  
+const GOOGLE_PREVIEW_SNAPSHOT_REGEX = /preview-\d{2}-\d{2,4}$/i  
+const OPENAI_ALLOWED_PREFIXES = ['gpt-5', 'o1', 'o3', 'o4']  
+const OPENAI_EXCLUDED_KEYWORDS = [  
+  'embed',  
+  'tts',  
+  'whisper',  
+  'dall-e',  
+  'davinci',  
+  'babbage',  
+  'ft:',  
+  'image',  
+  'audio',  
+  'realtime',  
+  'codex',  
+  'search',  
+  'transcribe',  
+  'deep-research',  
+  'oss',  
+  'instruct',  
+  'chat-latest'  
+]  
+const ANTHROPIC_ALLOWED_PREFIXES = [  
+  'claude-opus-4',  
+  'claude-sonnet-4',  
+  'claude-haiku-4'  
+]  
+const GOOGLE_ALLOWED_PREFIXES = ['gemini-2.5', 'gemini-3']  
+const GOOGLE_EXCLUDED_KEYWORDS = ['image', 'live', 'native-audio', 'embedding']  
   
 let modelsCache:  
   | {  
@@ -19,132 +49,438 @@ function sortModels(models: Model[]): Model[] {
   
 function dedupeModels(models: Model[]): Model[] {  
   const seen = new Set<string>()  
-  return models.filter(model => {  
-    const key = `${model.providerId}:${model.id}`  
-    if (seen.has(key)) return false  
+  const deduped: Model[] = []  
+  
+  for (const model of models) {  
+    const key = `${model.provider}|${model.providerId}|${model.id}`  
+    if (seen.has(key)) {  
+      continue  
+    }  
+  
     seen.add(key)  
-    return true  
-  })  
+    deduped.push(model)  
+  }  
+  
+  return deduped  
 }  
   
 function groupByProvider(models: Model[]): ModelsByProvider {  
-  return models.reduce((acc, model) => {  
-    if (!acc[model.provider]) {  
-      acc[model.provider] = []  
+  return models.reduce<ModelsByProvider>((acc, model) => {  
+    const key = model.provider  
+    if (!acc[key]) {  
+      acc[key] = []  
     }  
-    acc[model.provider].push(model)  
+    acc[key].push(model)  
     return acc  
-  }, {} as ModelsByProvider)  
+  }, {})  
 }  
   
-// GOOGLE GEMINI - Only 2.x models, no 1.5  
-export async function fetchGoogleModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('google')) return []  
-  return [  
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', providerId: 'google' },  
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', providerId: 'google' },  
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'Google', providerId: 'google' },  
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', providerId: 'google' }  
-  ]  
+function hasDateSnapshotSuffix(modelId: string): boolean {  
+  return DATE_SNAPSHOT_SUFFIX_REGEX.test(modelId)  
 }  
   
-// DEEPSEEK - Verified working IDs  
-export async function fetchDeepSeekModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('deepseek')) return []  
-  return [  
-    { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek', providerId: 'deepseek' },  
-    { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', provider: 'DeepSeek', providerId: 'deepseek' }  
-  ]  
+function passesOpenAIFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) {  
+    return false  
+  }  
+  
+  if (!OPENAI_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) {  
+    return false  
+  }  
+  
+  return !OPENAI_EXCLUDED_KEYWORDS.some(keyword =>  
+    id.toLowerCase().includes(keyword)  
+  )  
 }  
   
-// FIREWORKS - Simplified model IDs  
-export async function fetchFireworksModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('fireworks')) return []  
-  return [  
-    { id: 'llama-v3p1-70b-instruct', name: 'Llama 3.1 70B', provider: 'Fireworks', providerId: 'fireworks' },  
-    { id: 'mixtral-8x7b-instruct', name: 'Mixtral 8x7B', provider: 'Fireworks', providerId: 'fireworks' },  
-    { id: 'qwen2-72b-instruct', name: 'Qwen 2 72B', provider: 'Fireworks', providerId: 'fireworks' }  
-  ]  
+function passesAnthropicFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) {  
+    return false  
+  }  
+  
+  return ANTHROPIC_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))  
 }  
   
-// XAI - Current working models  
-export async function fetchXaiModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('xai')) return []  
-  return [  
-    { id: 'grok-2', name: 'Grok 2', provider: 'xAI', providerId: 'xai' },  
-    { id: 'grok-beta', name: 'Grok Beta', provider: 'xAI', providerId: 'xai' }  
-  ]  
+function passesGoogleFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) {  
+    return false  
+  }  
+  
+  if (GOOGLE_PREVIEW_SNAPSHOT_REGEX.test(id)) {  
+    return false  
+  }  
+  
+  if (!GOOGLE_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) {  
+    return false  
+  }  
+  
+  return !GOOGLE_EXCLUDED_KEYWORDS.some(keyword =>  
+    id.toLowerCase().includes(keyword)  
+  )  
 }  
   
-// OPENROUTER - Verified working models  
-export async function fetchOpenRouterModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('openrouter')) return []  
-  return [  
-    { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', provider: 'OpenRouter', providerId: 'openrouter' }  
-  ]  
+function passesGatewayFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) {  
+    return false  
+  }  
+  
+  const separatorIndex = id.indexOf('/')  
+  if (separatorIndex <= 0) {  
+    return true  
+  }  
+  
+  const provider = id.slice(0, separatorIndex)  
+  const modelId = id.slice(separatorIndex + 1)  
+  if (!modelId) {  
+    return false  
+  }  
+  
+  switch (provider) {  
+    case 'openai':  
+      return passesOpenAIFilters(modelId)  
+    case 'anthropic':  
+      return passesAnthropicFilters(modelId)  
+    case 'google':  
+      return passesGoogleFilters(modelId)  
+    default:  
+      return true  
+  }  
 }  
   
-// SILICONFLOW - HuggingFace-style IDs  
-export async function fetchSiliconFlowModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('siliconflow')) return []  
-  return [  
-    { id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek V3', provider: 'SiliconFlow', providerId: 'siliconflow' },  
-    { id: 'Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B', provider: 'SiliconFlow', providerId: 'siliconflow' },  
-    { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', name: 'Llama 3.1 70B', provider: 'SiliconFlow', providerId: 'siliconflow' }  
-  ]  
+async function fetchJson(  
+  url: string,  
+  headers: HeadersInit  
+): Promise<Record<string, any>> {  
+  const response = await fetch(url, { headers, method: 'GET' })  
+  if (!response.ok) {  
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`)  
+  }  
+  return (await response.json()) as Record<string, any>  
 }  
   
-export async function fetchOllamaModels(): Promise<Model[]> {  
-  return []  
-}  
+export async function fetchOpenAIModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('openai')) {  
+    return []  
+  }  
   
-export async function fetchGatewayModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('gateway')) return []  
   try {  
-    const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })  
-    const metadata = await gateway.getAvailableModels()  
-    return (metadata.models || []).map((model: any) => ({  
-      id: String(model.id),  
-      name: String(model.name || model.id),  
-      provider: 'Gateway',  
-      providerId: 'gateway'  
-    }))  
-  } catch {  
+    const json = await fetchJson('https://api.openai.com/v1/models', {  
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`  
+    })  
+  
+    const data = Array.isArray(json?.data) ? json.data : []  
+    return sortModels(  
+      dedupeModels(  
+        data  
+          .map(item => String(item?.id ?? ''))  
+          .filter(Boolean)  
+          .filter(passesOpenAIFilters)  
+          .map(id => ({  
+            id,  
+            name: id,  
+            provider: 'OpenAI',  
+            providerId: 'openai'  
+          }))  
+      )  
+    )  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch OpenAI models:', error)  
     return []  
   }  
 }  
   
-export async function fetchAvailableModels(): Promise<ModelsByProvider> {  
+export async function fetchAnthropicModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('anthropic')) {  
+    return []  
+  }  
+  
+  try {  
+    const models: Model[] = []  
+    const baseUrl = 'https://api.anthropic.com/v1/models'  
+    let afterId: string | undefined  
+    let hasMore = true  
+  
+    while (hasMore) {  
+      const url = new URL(baseUrl)  
+      url.searchParams.set('limit', '100')  
+      if (afterId) {  
+        url.searchParams.set('after_id', afterId)  
+      }  
+  
+      const json = await fetchJson(url.toString(), {  
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,  
+        'anthropic-version': '2023-06-01'  
+      })  
+  
+      const data = Array.isArray(json?.data) ? json.data : []  
+      models.push(  
+        ...data  
+          .map(item => {  
+            const id = String(item?.id ?? '')  
+            if (!id) return null  
+            return {  
+              id,  
+              name: String(item?.display_name ?? id),  
+              provider: 'Anthropic',  
+              providerId: 'anthropic'  
+            } satisfies Model  
+          })  
+          .filter((model): model is Model => model !== null)  
+          .filter(model => passesAnthropicFilters(model.id))  
+      )  
+  
+      hasMore = Boolean(json?.has_more)  
+      afterId = typeof json?.last_id === 'string' ? json.last_id : undefined  
+  
+      if (!hasMore || !afterId) {  
+        break  
+      }  
+    }  
+  
+    return sortModels(dedupeModels(models))  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Anthropic models:', error)  
+    return []  
+  }  
+}  
+  
+export async function fetchGoogleModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('google')) {  
+    return []  
+  }  
+  
+  try {  
+    const models: Model[] = []  
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY  
+    let nextPageToken: string | undefined  
+    while (true) {  
+      const url = new URL(  
+        'https://generativelanguage.googleapis.com/v1beta/models'  
+      )  
+      url.searchParams.set('key', apiKey!)  
+      if (nextPageToken) {  
+        url.searchParams.set('pageToken', nextPageToken)  
+      }  
+  
+      const json = await fetchJson(url.toString(), {})  
+      const data = Array.isArray(json?.models) ? json.models : []  
+  
+      models.push(  
+        ...data  
+          .filter(item =>  
+            Array.isArray(item?.supportedGenerationMethods)  
+              ? item.supportedGenerationMethods.includes('generateContent')  
+              : false  
+          )  
+          .map(item => {  
+            const rawName = String(item?.name ?? '')  
+            const id = rawName.startsWith('models/')  
+              ? rawName.slice('models/'.length)  
+              : rawName  
+            if (!id) return null  
+            return {  
+              id,  
+              name: String(item?.displayName ?? id),  
+              provider: 'Google',  
+              providerId: 'google'  
+            } satisfies Model  
+          })  
+          .filter((model): model is Model => model !== null)  
+          .filter(model => passesGoogleFilters(model.id))  
+      )  
+  
+      nextPageToken =  
+        typeof json?.nextPageToken === 'string' ? json.nextPageToken : undefined  
+      if (!nextPageToken) {  
+        break  
+      }  
+    }  
+  
+    return sortModels(dedupeModels(models))  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Google models:', error)  
+    return []  
+  }  
+}  
+  
+export async function fetchOllamaModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('ollama')) {  
+    return []  
+  }  
+  
+  try {  
+    const baseUrl = process.env.OLLAMA_BASE_URL  
+    const url = new URL('/api/tags', baseUrl).toString()  
+    const json = await fetchJson(url, {})  
+    const data = Array.isArray(json?.models) ? json.models : []  
+  
+    return sortModels(  
+      dedupeModels(  
+        data  
+          .map(item => String(item?.name ?? ''))  
+          .filter(Boolean)  
+          .filter(name => !name.toLowerCase().includes('embed'))  
+          .map(  
+            name =>  
+              ({  
+                id: name,  
+                name,  
+                provider: 'Ollama',  
+                providerId: 'ollama',  
+                providerOptions: {  
+                  ollama: {  
+                    think: true  
+                  }  
+                }  
+              }) satisfies Model  
+          )  
+      )  
+    )  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Ollama models:', error)  
+    return []  
+  }  
+}  
+  
+export async function fetchGatewayModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('gateway')) {  
+    return []  
+  }  
+  
+  try {  
+    const gateway = createGateway({  
+      apiKey: process.env.AI_GATEWAY_API_KEY  
+    })  
+  
+    const metadata = await gateway.getAvailableModels()  
+    const availableModels = metadata.models ?? []  
+  
+    return sortModels(  
+      dedupeModels(  
+        availableModels  
+          .filter(model => model?.modelType === 'language')  
+          .map(model => {  
+            const id = String(model?.id ?? '')  
+            if (!id) return null  
+            return {  
+              id,  
+              name: String(model?.name ?? id),  
+              provider: 'Gateway',  
+              providerId: 'gateway'  
+            } satisfies Model  
+          })  
+          .filter((model): model is Model => model !== null)  
+          .filter(model => passesGatewayFilters(model.id))  
+      )  
+    )  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Gateway models:', error)  
+    return []  
+  }  
+}  
+  
+// Static list — only free-tier, actively maintained models  
+export async function fetchDeepSeekModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('deepseek')) return []  
+  return [  
+    { id: 'deepseek-chat', name: 'DeepSeek V3', provider: 'DeepSeek', providerId: 'deepseek' },  
+    { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'DeepSeek', providerId: 'deepseek' }  
+  ]  
+}  
+  
+// Static list — only :free models on OpenRouter  
+export async function fetchOpenRouterModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('openrouter')) return []  
+  return [  
+    { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'deepseek/deepseek-v3-0324:free', name: 'DeepSeek V3 (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'qwen/qwen3-235b-a22b:free', name: 'Qwen3 235B (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (free)', provider: 'OpenRouter', providerId: 'openrouter' }  
+  ]  
+}  
+  
+// Static list — Groq free tier models  
+export async function fetchGroqModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('groq')) return []  
+  return [  
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', provider: 'Groq', providerId: 'groq' }  
+  ]  
+}  
+  
+// Static list — HuggingFace free serverless inference models  
+export async function fetchHuggingFaceModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('huggingface')) return []  
+  return [  
+    { id: 'meta-llama/Llama-3.3-70B-Instruct', name: 'Llama 3.3 70B', provider: 'HuggingFace', providerId: 'huggingface' },  
+    { id: 'Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B', provider: 'HuggingFace', providerId: 'huggingface' },  
+    { id: 'mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B', provider: 'HuggingFace', providerId: 'huggingface' },  
+    { id: 'microsoft/Phi-3.5-mini-instruct', name: 'Phi 3.5 Mini', provider: 'HuggingFace', providerId: 'huggingface' }  
+  ]  
+}  
+  
+export async function fetchAvailableModels(options?: {  
+  forceRefresh?: boolean  
+}): Promise<ModelsByProvider> {  
+  const forceRefresh = options?.forceRefresh === true  
   const now = Date.now()  
-  if (modelsCache && modelsCache.expiresAt > now) {  
+  
+  if (!forceRefresh && modelsCache && modelsCache.expiresAt > now) {  
     return modelsCache.value  
   }  
   
-  const [google, deepseek, fireworks, xai, openrouter, siliconflow, gateway] = await Promise.all([  
+  const [  
+    openai,  
+    anthropic,  
+    google,  
+    ollama,  
+    gateway,  
+    deepseek,  
+    openrouter,  
+    groq,  
+    huggingface  
+  ] = await Promise.all([  
+    fetchOpenAIModels(),  
+    fetchAnthropicModels(),  
     fetchGoogleModels(),  
+    fetchOllamaModels(),  
+    fetchGatewayModels(),  
     fetchDeepSeekModels(),  
-    fetchFireworksModels(),  
-    fetchXaiModels(),  
     fetchOpenRouterModels(),  
-    fetchSiliconFlowModels(),  
-    fetchGatewayModels()  
+    fetchGroqModels(),  
+    fetchHuggingFaceModels()  
   ])  
   
   const grouped = groupByProvider(  
-    dedupeModels([...google, ...deepseek, ...fireworks, ...xai, ...openrouter, ...siliconflow, ...gateway])  
+    dedupeModels([  
+      ...openai,  
+      ...anthropic,  
+      ...google,  
+      ...ollama,  
+      ...gateway,  
+      ...deepseek,  
+      ...openrouter,  
+      ...groq,  
+      ...huggingface  
+    ])  
   )  
   
+  // Keep stable ordering for each provider list.  
   const normalized = Object.fromEntries(  
-    Object.entries(grouped).map(([k, v]) => [k, sortModels(v)])  
+    Object.entries(grouped).map(([provider, models]) => [  
+      provider,  
+      sortModels(models)  
+    ])  
   )  
   
-  modelsCache = { value: normalized, expiresAt: now + MODEL_CACHE_TTL_MS }  
+  modelsCache = {  
+    value: normalized,  
+    expiresAt: now + MODEL_CACHE_TTL_MS  
+  }  
+  
   return normalized  
 }
