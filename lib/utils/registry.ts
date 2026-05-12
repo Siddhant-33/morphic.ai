@@ -19,7 +19,6 @@ const providers: Record<string, any> = {
   deepseek: createOpenAI({  
     apiKey: process.env.DEEPSEEK_API_KEY,  
     baseURL: 'https://api.deepseek.com/v1',  
-    compatibility: 'compatible'  
   }),  
   openrouter: createOpenAI({  
     apiKey: process.env.OPENROUTER_API_KEY,  
