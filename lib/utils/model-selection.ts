@@ -20,11 +20,10 @@ const PROVIDER_LABELS: Record<string, string> = {
   ollama: 'Ollama',  
   gateway: 'Gateway',  
   'openai-compatible': 'OpenAI Compatible',  
-  fireworks: 'Fireworks',  
   deepseek: 'DeepSeek',  
-  xai: 'xAI',  
-  siliconflow: 'SiliconFlow',  
-  openrouter: 'OpenRouter'  
+  openrouter: 'OpenRouter',  
+  groq: 'Groq',  
+  huggingface: 'HuggingFace'  
 }
   
 function buildProviderOptions(  
