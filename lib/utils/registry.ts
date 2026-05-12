@@ -22,18 +22,15 @@ const providers: Record<string, any> = {
   }),  
   openrouter: createOpenAI({  
     apiKey: process.env.OPENROUTER_API_KEY,  
-    baseURL: 'https://openrouter.ai/api/v1',  
-    compatibility: 'compatible'  
+    baseURL: 'https://openrouter.ai/api/v1',    
   }),  
   groq: createOpenAI({  
     apiKey: process.env.GROQ_API_KEY,  
-    baseURL: 'https://api.groq.com/openai/v1',  
-    compatibility: 'compatible'  
+    baseURL: 'https://api.groq.com/openai/v1',    
   }),  
   huggingface: createOpenAI({  
     apiKey: process.env.HUGGINGFACE_API_KEY,  
     baseURL: 'https://api-inference.huggingface.co/v1',  
-    compatibility: 'compatible'  
   })  
 }  
   
