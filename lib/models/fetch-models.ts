@@ -56,7 +56,6 @@ function dedupeModels(models: Model[]): Model[] {
     if (seen.has(key)) {  
       continue  
     }  
-  
     seen.add(key)  
     deduped.push(model)  
   }  
@@ -379,49 +378,135 @@ export async function fetchGatewayModels(): Promise<Model[]> {
   }  
 }  
   
-// Static list — only free-tier, actively maintained models  
+// ── DeepSeek ──────────────────────────────────────────────────────────────────  
+  
 export async function fetchDeepSeekModels(): Promise<Model[]> {  
   if (!isProviderEnabled('deepseek')) return []  
   return [  
-    { id: 'deepseek-chat', name: 'DeepSeek V3', provider: 'DeepSeek', providerId: 'deepseek' },  
-    { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'DeepSeek', providerId: 'deepseek' }  
+    {  
+      id: 'deepseek-chat',  
+      name: 'DeepSeek V3',  
+      provider: 'DeepSeek',  
+      providerId: 'deepseek'  
+    },  
+    {  
+      id: 'deepseek-reasoner',  
+      name: 'DeepSeek R1',  
+      provider: 'DeepSeek',  
+      providerId: 'deepseek'  
+    }  
   ]  
 }  
   
-// Static list — only :free models on OpenRouter  
+// ── OpenRouter (free models only) ─────────────────────────────────────────────  
+  
 export async function fetchOpenRouterModels(): Promise<Model[]> {  
   if (!isProviderEnabled('openrouter')) return []  
   return [  
-    { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'deepseek/deepseek-v3-0324:free', name: 'DeepSeek V3 (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'qwen/qwen3-235b-a22b:free', name: 'Qwen3 235B (free)', provider: 'OpenRouter', providerId: 'openrouter' },  
-    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (free)', provider: 'OpenRouter', providerId: 'openrouter' }  
+    {  
+      id: 'deepseek/deepseek-r1:free',  
+      name: 'DeepSeek R1',  
+      provider: 'OpenRouter',  
+      providerId: 'openrouter'  
+    },  
+    {  
+      id: 'deepseek/deepseek-chat-v3-0324:free',  
+      name: 'DeepSeek V3',  
+      provider: 'OpenRouter',  
+      providerId: 'openrouter'  
+    },  
+    {  
+      id: 'meta-llama/llama-3.1-8b-instruct:free',  
+      name: 'Llama 3.1 8B',  
+      provider: 'OpenRouter',  
+      providerId: 'openrouter'  
+    },  
+    {  
+      id: 'google/gemma-3-12b-it:free',  
+      name: 'Gemma 3 12B',  
+      provider: 'OpenRouter',  
+      providerId: 'openrouter'  
+    },  
+    {  
+      id: 'mistralai/mistral-7b-instruct:free',  
+      name: 'Mistral 7B',  
+      provider: 'OpenRouter',  
+      providerId: 'openrouter'  
+    },  
+    {  
+      id: 'qwen/qwen-2.5-7b-instruct:free',  
+      name: 'Qwen 2.5 7B',  
+      provider: 'OpenRouter',  
+      providerId: 'openrouter'  
+    }  
   ]  
 }  
   
-// Static list — Groq free tier models  
+// ── Groq (free, fast) ─────────────────────────────────────────────────────────  
+  
 export async function fetchGroqModels(): Promise<Model[]> {  
   if (!isProviderEnabled('groq')) return []  
   return [  
-    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', providerId: 'groq' },  
-    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', provider: 'Groq', providerId: 'groq' },  
-    { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'Groq', providerId: 'groq' },  
-    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', provider: 'Groq', providerId: 'groq' }  
+    {  
+      id: 'llama-3.3-70b-versatile',  
+      name: 'Llama 3.3 70B',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
+      id: 'llama-3.1-8b-instant',  
+      name: 'Llama 3.1 8B',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
+      id: 'llama3-70b-8192',  
+      name: 'Llama 3 70B',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
+      id: 'llama3-8b-8192',  
+      name: 'Llama 3 8B',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
+      id: 'mixtral-8x7b-32768',  
+      name: 'Mixtral 8x7B',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    }  
   ]  
 }  
   
-// Static list — HuggingFace free serverless inference models  
+// ── HuggingFace (free) ────────────────────────────────────────────────────────  
+  
 export async function fetchHuggingFaceModels(): Promise<Model[]> {  
   if (!isProviderEnabled('huggingface')) return []  
   return [  
-    { id: 'meta-llama/Llama-3.3-70B-Instruct', name: 'Llama 3.3 70B', provider: 'HuggingFace', providerId: 'huggingface' },  
-    { id: 'Qwen/Qwen2.5-72B-Instruct', name: 'Qwen 2.5 72B', provider: 'HuggingFace', providerId: 'huggingface' },  
-    { id: 'mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B', provider: 'HuggingFace', providerId: 'huggingface' },  
-    { id: 'microsoft/Phi-3.5-mini-instruct', name: 'Phi 3.5 Mini', provider: 'HuggingFace', providerId: 'huggingface' }  
+    {  
+      id: 'mistralai/Mistral-7B-Instruct-v0.3',  
+      name: 'Mistral 7B Instruct',  
+      provider: 'HuggingFace',  
+      providerId: 'huggingface'  
+    },  
+    {  
+      id: 'Qwen/Qwen2.5-7B-Instruct',  
+      name: 'Qwen 2.5 7B',  
+      provider: 'HuggingFace',  
+      providerId: 'huggingface'  
+    },  
+    {  
+      id: 'meta-llama/Llama-3.2-3B-Instruct',  
+      name: 'Llama 3.2 3B',  
+      provider: 'HuggingFace',  
+      providerId: 'huggingface'  
+    }  
   ]  
 }  
+  
+// ── Main export ───────────────────────────────────────────────────────────────  
   
 export async function fetchAvailableModels(options?: {  
   forceRefresh?: boolean  
@@ -469,7 +554,6 @@ export async function fetchAvailableModels(options?: {
     ])  
   )  
   
-  // Keep stable ordering for each provider list.  
   const normalized = Object.fromEntries(  
     Object.entries(grouped).map(([provider, models]) => [  
       provider,  
@@ -482,5 +566,5 @@ export async function fetchAvailableModels(options?: {
     expiresAt: now + MODEL_CACHE_TTL_MS  
   }  
   
-  return normalized  
+    return normalized  
 }
