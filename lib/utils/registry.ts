@@ -5,7 +5,6 @@ import { createOpenAI, openai } from '@ai-sdk/openai'
 import { createProviderRegistry, LanguageModel } from 'ai'  
 import { createOllama } from 'ai-sdk-ollama'  
   
-// Build providers object conditionally  
 const providers: Record<string, any> = {  
   openai,  
   anthropic,  
@@ -19,23 +18,26 @@ const providers: Record<string, any> = {
   }),  
   deepseek: createOpenAI({  
     apiKey: process.env.DEEPSEEK_API_KEY,  
-    baseURL: 'https://api.deepseek.com'  
+    baseURL: 'https://api.deepseek.com/v1',  
+    compatibility: 'compatible'  
   }),  
   openrouter: createOpenAI({  
     apiKey: process.env.OPENROUTER_API_KEY,  
-    baseURL: 'https://openrouter.ai/api/v1'  
+    baseURL: 'https://openrouter.ai/api/v1',  
+    compatibility: 'compatible'  
   }),  
   groq: createOpenAI({  
     apiKey: process.env.GROQ_API_KEY,  
-    baseURL: 'https://api.groq.com/openai/v1'  
+    baseURL: 'https://api.groq.com/openai/v1',  
+    compatibility: 'compatible'  
   }),  
   huggingface: createOpenAI({  
     apiKey: process.env.HUGGINGFACE_API_KEY,  
-    baseURL: 'https://api-inference.huggingface.co/v1'  
+    baseURL: 'https://api-inference.huggingface.co/v1',  
+    compatibility: 'compatible'  
   })  
 }  
   
-// Only add Ollama if OLLAMA_BASE_URL is configured  
 const ollamaProvider = process.env.OLLAMA_BASE_URL  
   ? createOllama({ baseURL: process.env.OLLAMA_BASE_URL })  
   : null  
@@ -47,23 +49,15 @@ if (ollamaProvider) {
 export const registry = createProviderRegistry(providers)  
   
 export function getModel(model: string): LanguageModel {  
-  // For Ollama models, bypass the registry to pass model-level settings  
-  // that ai-sdk-ollama requires (think, supportedUrls override).  
   if (model.startsWith('ollama:') && ollamaProvider) {  
     const modelId = model.slice('ollama:'.length)  
     const lm = ollamaProvider(modelId, { think: true })  
-  
-    // Ollama's Chat API only accepts base64 in the images field, not URLs.  
-    // Override supportedUrls to force AI SDK to download images and convert  
-    // them to base64 before sending to the model.  
     Object.defineProperty(lm, 'supportedUrls', {  
       value: {},  
       configurable: true  
     })  
-  
     return lm  
   }  
-  
   return registry.languageModel(  
     model as Parameters<typeof registry.languageModel>[0]  
   )  
