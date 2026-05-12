@@ -63,15 +63,15 @@ function ProviderLogo({ providerId }: { providerId: string }) {
   if (initials) {  
     return (  
       <span  
-        className="size-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white shrink-0"  
-        style={{ backgroundColor: initials.bg }}  
+        className="size-4 rounded-full flex items-center justify-center shrink-0 text-white"  
+        style={{ backgroundColor: initials.bg, fontSize: '6px', fontWeight: 700 }}  
       >  
         {initials.text}  
       </span>  
     )  
   }  
   
-  return <span className="size-4 rounded-full bg-muted-foreground/30 shrink-0" />  
+  return <span className="size-4 rounded-full bg-muted-foreground/30" />  
 }  
   
 interface ModelSelectorClientProps {  
