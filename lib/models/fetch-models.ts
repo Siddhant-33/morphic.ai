@@ -10,23 +10,9 @@ const DATE_SNAPSHOT_SUFFIX_REGEX = /-\d{4}-\d{2}-\d{2}$/
 const GOOGLE_PREVIEW_SNAPSHOT_REGEX = /preview-\d{2}-\d{2,4}$/i  
 const OPENAI_ALLOWED_PREFIXES = ['gpt-5', 'o1', 'o3', 'o4']  
 const OPENAI_EXCLUDED_KEYWORDS = [  
-  'embed',  
-  'tts',  
-  'whisper',  
-  'dall-e',  
-  'davinci',  
-  'babbage',  
-  'ft:',  
-  'image',  
-  'audio',  
-  'realtime',  
-  'codex',  
-  'search',  
-  'transcribe',  
-  'deep-research',  
-  'oss',  
-  'instruct',  
-  'chat-latest'  
+  'embed', 'tts', 'whisper', 'dall-e', 'davinci', 'babbage',  
+  'ft:', 'image', 'audio', 'realtime', 'codex', 'search',  
+  'transcribe', 'deep-research', 'oss', 'instruct', 'chat-latest'  
 ]  
 const ANTHROPIC_ALLOWED_PREFIXES = [  
   'claude-opus-4',  
@@ -50,25 +36,19 @@ function sortModels(models: Model[]): Model[] {
 function dedupeModels(models: Model[]): Model[] {  
   const seen = new Set<string>()  
   const deduped: Model[] = []  
-  
   for (const model of models) {  
     const key = `${model.provider}|${model.providerId}|${model.id}`  
-    if (seen.has(key)) {  
-      continue  
-    }  
+    if (seen.has(key)) continue  
     seen.add(key)  
     deduped.push(model)  
   }  
-  
   return deduped  
 }  
   
 function groupByProvider(models: Model[]): ModelsByProvider {  
   return models.reduce<ModelsByProvider>((acc, model) => {  
     const key = model.provider  
-    if (!acc[key]) {  
-      acc[key] = []  
-    }  
+    if (!acc[key]) acc[key] = []  
     acc[key].push(model)  
     return acc  
   }, {})  
@@ -79,70 +59,35 @@ function hasDateSnapshotSuffix(modelId: string): boolean {
 }  
   
 function passesOpenAIFilters(id: string): boolean {  
-  if (hasDateSnapshotSuffix(id)) {  
-    return false  
-  }  
-  
-  if (!OPENAI_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) {  
-    return false  
-  }  
-  
-  return !OPENAI_EXCLUDED_KEYWORDS.some(keyword =>  
-    id.toLowerCase().includes(keyword)  
-  )  
+  if (hasDateSnapshotSuffix(id)) return false  
+  if (!OPENAI_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) return false  
+  return !OPENAI_EXCLUDED_KEYWORDS.some(keyword => id.toLowerCase().includes(keyword))  
 }  
   
 function passesAnthropicFilters(id: string): boolean {  
-  if (hasDateSnapshotSuffix(id)) {  
-    return false  
-  }  
-  
+  if (hasDateSnapshotSuffix(id)) return false  
   return ANTHROPIC_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))  
 }  
   
 function passesGoogleFilters(id: string): boolean {  
-  if (hasDateSnapshotSuffix(id)) {  
-    return false  
-  }  
-  
-  if (GOOGLE_PREVIEW_SNAPSHOT_REGEX.test(id)) {  
-    return false  
-  }  
-  
-  if (!GOOGLE_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) {  
-    return false  
-  }  
-  
-  return !GOOGLE_EXCLUDED_KEYWORDS.some(keyword =>  
-    id.toLowerCase().includes(keyword)  
-  )  
+  if (hasDateSnapshotSuffix(id)) return false  
+  if (GOOGLE_PREVIEW_SNAPSHOT_REGEX.test(id)) return false  
+  if (!GOOGLE_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) return false  
+  return !GOOGLE_EXCLUDED_KEYWORDS.some(keyword => id.toLowerCase().includes(keyword))  
 }  
   
 function passesGatewayFilters(id: string): boolean {  
-  if (hasDateSnapshotSuffix(id)) {  
-    return false  
-  }  
-  
+  if (hasDateSnapshotSuffix(id)) return false  
   const separatorIndex = id.indexOf('/')  
-  if (separatorIndex <= 0) {  
-    return true  
-  }  
-  
+  if (separatorIndex <= 0) return true  
   const provider = id.slice(0, separatorIndex)  
   const modelId = id.slice(separatorIndex + 1)  
-  if (!modelId) {  
-    return false  
-  }  
-  
+  if (!modelId) return false  
   switch (provider) {  
-    case 'openai':  
-      return passesOpenAIFilters(modelId)  
-    case 'anthropic':  
-      return passesAnthropicFilters(modelId)  
-    case 'google':  
-      return passesGoogleFilters(modelId)  
-    default:  
-      return true  
+    case 'openai': return passesOpenAIFilters(modelId)  
+    case 'anthropic': return passesAnthropicFilters(modelId)  
+    case 'google': return passesGoogleFilters(modelId)  
+    default: return true  
   }  
 }  
   
@@ -158,15 +103,11 @@ async function fetchJson(
 }  
   
 export async function fetchOpenAIModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('openai')) {  
-    return []  
-  }  
-  
+  if (!isProviderEnabled('openai')) return []  
   try {  
     const json = await fetchJson('https://api.openai.com/v1/models', {  
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`  
     })  
-  
     const data = Array.isArray(json?.data) ? json.data : []  
     return sortModels(  
       dedupeModels(  
@@ -174,12 +115,7 @@ export async function fetchOpenAIModels(): Promise<Model[]> {
           .map(item => String(item?.id ?? ''))  
           .filter(Boolean)  
           .filter(passesOpenAIFilters)  
-          .map(id => ({  
-            id,  
-            name: id,  
-            provider: 'OpenAI',  
-            providerId: 'openai'  
-          }))  
+          .map(id => ({ id, name: id, provider: 'OpenAI', providerId: 'openai' }))  
       )  
     )  
   } catch (error) {  
@@ -189,53 +125,35 @@ export async function fetchOpenAIModels(): Promise<Model[]> {
 }  
   
 export async function fetchAnthropicModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('anthropic')) {  
-    return []  
-  }  
-  
+  if (!isProviderEnabled('anthropic')) return []  
   try {  
     const models: Model[] = []  
     const baseUrl = 'https://api.anthropic.com/v1/models'  
     let afterId: string | undefined  
     let hasMore = true  
-  
     while (hasMore) {  
       const url = new URL(baseUrl)  
       url.searchParams.set('limit', '100')  
-      if (afterId) {  
-        url.searchParams.set('after_id', afterId)  
-      }  
-  
+      if (afterId) url.searchParams.set('after_id', afterId)  
       const json = await fetchJson(url.toString(), {  
         'x-api-key': process.env.ANTHROPIC_API_KEY!,  
         'anthropic-version': '2023-06-01'  
       })  
-  
       const data = Array.isArray(json?.data) ? json.data : []  
       models.push(  
         ...data  
           .map(item => {  
             const id = String(item?.id ?? '')  
             if (!id) return null  
-            return {  
-              id,  
-              name: String(item?.display_name ?? id),  
-              provider: 'Anthropic',  
-              providerId: 'anthropic'  
-            } satisfies Model  
+            return { id, name: String(item?.display_name ?? id), provider: 'Anthropic', providerId: 'anthropic' } satisfies Model  
           })  
           .filter((model): model is Model => model !== null)  
           .filter(model => passesAnthropicFilters(model.id))  
       )  
-  
       hasMore = Boolean(json?.has_more)  
       afterId = typeof json?.last_id === 'string' ? json.last_id : undefined  
-  
-      if (!hasMore || !afterId) {  
-        break  
-      }  
+      if (!hasMore || !afterId) break  
     }  
-  
     return sortModels(dedupeModels(models))  
   } catch (error) {  
     console.warn('[ModelFetch] Failed to fetch Anthropic models:', error)  
@@ -244,26 +162,17 @@ export async function fetchAnthropicModels(): Promise<Model[]> {
 }  
   
 export async function fetchGoogleModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('google')) {  
-    return []  
-  }  
-  
+  if (!isProviderEnabled('google')) return []  
   try {  
     const models: Model[] = []  
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY  
     let nextPageToken: string | undefined  
     while (true) {  
-      const url = new URL(  
-        'https://generativelanguage.googleapis.com/v1beta/models'  
-      )  
+      const url = new URL('https://generativelanguage.googleapis.com/v1beta/models')  
       url.searchParams.set('key', apiKey!)  
-      if (nextPageToken) {  
-        url.searchParams.set('pageToken', nextPageToken)  
-      }  
-  
+      if (nextPageToken) url.searchParams.set('pageToken', nextPageToken)  
       const json = await fetchJson(url.toString(), {})  
       const data = Array.isArray(json?.models) ? json.models : []  
-  
       models.push(  
         ...data  
           .filter(item =>  
@@ -273,28 +182,16 @@ export async function fetchGoogleModels(): Promise<Model[]> {
           )  
           .map(item => {  
             const rawName = String(item?.name ?? '')  
-            const id = rawName.startsWith('models/')  
-              ? rawName.slice('models/'.length)  
-              : rawName  
+            const id = rawName.startsWith('models/') ? rawName.slice('models/'.length) : rawName  
             if (!id) return null  
-            return {  
-              id,  
-              name: String(item?.displayName ?? id),  
-              provider: 'Google',  
-              providerId: 'google'  
-            } satisfies Model  
+            return { id, name: String(item?.displayName ?? id), provider: 'Google', providerId: 'google' } satisfies Model  
           })  
           .filter((model): model is Model => model !== null)  
           .filter(model => passesGoogleFilters(model.id))  
       )  
-  
-      nextPageToken =  
-        typeof json?.nextPageToken === 'string' ? json.nextPageToken : undefined  
-      if (!nextPageToken) {  
-        break  
-      }  
+      nextPageToken = typeof json?.nextPageToken === 'string' ? json.nextPageToken : undefined  
+      if (!nextPageToken) break  
     }  
-  
     return sortModels(dedupeModels(models))  
   } catch (error) {  
     console.warn('[ModelFetch] Failed to fetch Google models:', error)  
@@ -303,36 +200,25 @@ export async function fetchGoogleModels(): Promise<Model[]> {
 }  
   
 export async function fetchOllamaModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('ollama')) {  
-    return []  
-  }  
-  
+  if (!isProviderEnabled('ollama')) return []  
   try {  
     const baseUrl = process.env.OLLAMA_BASE_URL  
     const url = new URL('/api/tags', baseUrl).toString()  
     const json = await fetchJson(url, {})  
     const data = Array.isArray(json?.models) ? json.models : []  
-  
     return sortModels(  
       dedupeModels(  
         data  
           .map(item => String(item?.name ?? ''))  
           .filter(Boolean)  
           .filter(name => !name.toLowerCase().includes('embed'))  
-          .map(  
-            name =>  
-              ({  
-                id: name,  
-                name,  
-                provider: 'Ollama',  
-                providerId: 'ollama',  
-                providerOptions: {  
-                  ollama: {  
-                    think: true  
-                  }  
-                }  
-              }) satisfies Model  
-          )  
+          .map(name => ({  
+            id: name,  
+            name,  
+            provider: 'Ollama',  
+            providerId: 'ollama',  
+            providerOptions: { ollama: { think: true } }  
+          }) satisfies Model)  
       )  
     )  
   } catch (error) {  
@@ -342,18 +228,11 @@ export async function fetchOllamaModels(): Promise<Model[]> {
 }  
   
 export async function fetchGatewayModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('gateway')) {  
-    return []  
-  }  
-  
+  if (!isProviderEnabled('gateway')) return []  
   try {  
-    const gateway = createGateway({  
-      apiKey: process.env.AI_GATEWAY_API_KEY  
-    })  
-  
+    const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })  
     const metadata = await gateway.getAvailableModels()  
     const availableModels = metadata.models ?? []  
-  
     return sortModels(  
       dedupeModels(  
         availableModels  
@@ -361,12 +240,7 @@ export async function fetchGatewayModels(): Promise<Model[]> {
           .map(model => {  
             const id = String(model?.id ?? '')  
             if (!id) return null  
-            return {  
-              id,  
-              name: String(model?.name ?? id),  
-              provider: 'Gateway',  
-              providerId: 'gateway'  
-            } satisfies Model  
+            return { id, name: String(model?.name ?? id), provider: 'Gateway', providerId: 'gateway' } satisfies Model  
           })  
           .filter((model): model is Model => model !== null)  
           .filter(model => passesGatewayFilters(model.id))  
@@ -378,135 +252,40 @@ export async function fetchGatewayModels(): Promise<Model[]> {
   }  
 }  
   
-// ── DeepSeek ──────────────────────────────────────────────────────────────────  
-  
-export async function fetchDeepSeekModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('deepseek')) return []  
+export async function fetchGroqModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('groq')) return []  
   return [  
-    {  
-      id: 'deepseek-chat',  
-      name: 'DeepSeek V3',  
-      provider: 'DeepSeek',  
-      providerId: 'deepseek'  
-    },  
-    {  
-      id: 'deepseek-reasoner',  
-      name: 'DeepSeek R1',  
-      provider: 'DeepSeek',  
-      providerId: 'deepseek'  
-    }  
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout 17B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'meta-llama/llama-4-maverick-17b-128e-instruct', name: 'Llama 4 Maverick 17B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B', provider: 'Groq', providerId: 'groq' },  
+    { id: 'qwen-qwq-32b', name: 'Qwen QwQ 32B', provider: 'Groq', providerId: 'groq' }  
   ]  
 }  
-  
-// ── OpenRouter (free models only) ─────────────────────────────────────────────  
   
 export async function fetchOpenRouterModels(): Promise<Model[]> {  
   if (!isProviderEnabled('openrouter')) return []  
   return [  
-    {  
-      id: 'deepseek/deepseek-r1:free',  
-      name: 'DeepSeek R1',  
-      provider: 'OpenRouter',  
-      providerId: 'openrouter'  
-    },  
-    {  
-      id: 'deepseek/deepseek-chat-v3-0324:free',  
-      name: 'DeepSeek V3',  
-      provider: 'OpenRouter',  
-      providerId: 'openrouter'  
-    },  
-    {  
-      id: 'meta-llama/llama-3.1-8b-instruct:free',  
-      name: 'Llama 3.1 8B',  
-      provider: 'OpenRouter',  
-      providerId: 'openrouter'  
-    },  
-    {  
-      id: 'google/gemma-3-12b-it:free',  
-      name: 'Gemma 3 12B',  
-      provider: 'OpenRouter',  
-      providerId: 'openrouter'  
-    },  
-    {  
-      id: 'mistralai/mistral-7b-instruct:free',  
-      name: 'Mistral 7B',  
-      provider: 'OpenRouter',  
-      providerId: 'openrouter'  
-    },  
-    {  
-      id: 'qwen/qwen-2.5-7b-instruct:free',  
-      name: 'Qwen 2.5 7B',  
-      provider: 'OpenRouter',  
-      providerId: 'openrouter'  
-    }  
+    { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'google/gemma-3-12b-it:free', name: 'Gemma 3 12B (Free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'qwen/qwen-2.5-7b-instruct:free', name: 'Qwen 2.5 7B (Free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini (Free)', provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free)', provider: 'OpenRouter', providerId: 'openrouter' }  
   ]  
 }  
   
-// ── Groq (free, fast) ─────────────────────────────────────────────────────────  
-  
-export async function fetchGroqModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('groq')) return []  
+export async function fetchNvidiaModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('nvidia')) return []  
   return [  
-    {  
-      id: 'llama-3.3-70b-versatile',  
-      name: 'Llama 3.3 70B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
-    {  
-      id: 'llama-3.1-8b-instant',  
-      name: 'Llama 3.1 8B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
-    {  
-      id: 'llama3-70b-8192',  
-      name: 'Llama 3 70B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
-    {  
-      id: 'llama3-8b-8192',  
-      name: 'Llama 3 8B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
-    {  
-      id: 'mixtral-8x7b-32768',  
-      name: 'Mixtral 8x7B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    }  
+    { id: 'meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'mistralai/mistral-7b-instruct-v0.3', name: 'Mistral 7B', provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B', provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B', provider: 'NVIDIA', providerId: 'nvidia' }  
   ]  
 }  
-  
-// ── HuggingFace (free) ────────────────────────────────────────────────────────  
-  
-export async function fetchHuggingFaceModels(): Promise<Model[]> {  
-  if (!isProviderEnabled('huggingface')) return []  
-  return [  
-    {  
-      id: 'mistralai/Mistral-7B-Instruct-v0.3',  
-      name: 'Mistral 7B Instruct',  
-      provider: 'HuggingFace',  
-      providerId: 'huggingface'  
-    },  
-    {  
-      id: 'Qwen/Qwen2.5-7B-Instruct',  
-      name: 'Qwen 2.5 7B',  
-      provider: 'HuggingFace',  
-      providerId: 'huggingface'  
-    },  
-    {  
-      id: 'meta-llama/Llama-3.2-3B-Instruct',  
-      name: 'Llama 3.2 3B',  
-      provider: 'HuggingFace',  
-      providerId: 'huggingface'  
-    }  
-  ]  
-}  
-  
-// ── Main export ───────────────────────────────────────────────────────────────  
   
 export async function fetchAvailableModels(options?: {  
   forceRefresh?: boolean  
@@ -518,39 +297,22 @@ export async function fetchAvailableModels(options?: {
     return modelsCache.value  
   }  
   
-  const [  
-    openai,  
-    anthropic,  
-    google,  
-    ollama,  
-    gateway,  
-    deepseek,  
-    openrouter,  
-    groq,  
-    huggingface  
-  ] = await Promise.all([  
-    fetchOpenAIModels(),  
-    fetchAnthropicModels(),  
-    fetchGoogleModels(),  
-    fetchOllamaModels(),  
-    fetchGatewayModels(),  
-    fetchDeepSeekModels(),  
-    fetchOpenRouterModels(),  
-    fetchGroqModels(),  
-    fetchHuggingFaceModels()  
-  ])  
+  const [openai, anthropic, google, ollama, gateway, groq, openrouter, nvidia] =  
+    await Promise.all([  
+      fetchOpenAIModels(),  
+      fetchAnthropicModels(),  
+      fetchGoogleModels(),  
+      fetchOllamaModels(),  
+      fetchGatewayModels(),  
+      fetchGroqModels(),  
+      fetchOpenRouterModels(),  
+      fetchNvidiaModels()  
+    ])  
   
   const grouped = groupByProvider(  
     dedupeModels([  
-      ...openai,  
-      ...anthropic,  
-      ...google,  
-      ...ollama,  
-      ...gateway,  
-      ...deepseek,  
-      ...openrouter,  
-      ...groq,  
-      ...huggingface  
+      ...openai, ...anthropic, ...google, ...ollama,  
+      ...gateway, ...groq, ...openrouter, ...nvidia  
     ])  
   )  
   
@@ -566,5 +328,5 @@ export async function fetchAvailableModels(options?: {
     expiresAt: now + MODEL_CACHE_TTL_MS  
   }  
   
-    return normalized  
+  return normalized  
 }
