@@ -81,9 +81,7 @@ export function getModel(model: string): LanguageModel {
     return lm  
   }  
   
-  return registry.languageModel(  
-    model as Parameters<typeof registry.languageModel>  
-  )  
+  return registry.languageModel(model as any)  
 }  
   
 export function isProviderEnabled(providerId: string): boolean {  
