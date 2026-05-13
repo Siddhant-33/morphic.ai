@@ -3,7 +3,7 @@ import { createGateway } from '@ai-sdk/gateway'
 import { google } from '@ai-sdk/google'  
 import { createGroq } from '@ai-sdk/groq'  
 import { createOpenAI, openai } from '@ai-sdk/openai'  
-import { createProviderRegistry, LanguageModel, experimental_wrapModel } from 'ai'  
+import { createProviderRegistry, LanguageModel, wrapModel } from 'ai'  
 import { createOllama } from 'ai-sdk-ollama'  
   
 const providers: Record<string, any> = {  
@@ -56,9 +56,9 @@ export function getModel(model: string): LanguageModel {
       configurable: true  
     })  
 
-    // Strip tool calling configurations if the active model is tinyllama
+    // Strip tool calling configurations safely using stable wrapModel middleware
     if (modelId.toLowerCase().includes('tinyllama')) {
-      return experimental_wrapModel({
+      return wrapModel({
         model: lm,
         middleware: {
           transformParams: async ({ params }) => {
@@ -73,7 +73,7 @@ export function getModel(model: string): LanguageModel {
   }  
   
   return registry.languageModel(  
-    model as Parameters<typeof registry.languageModel>  
+    model as Parameters<typeof registry.languageModel>[0]  
   )  
 }  
   
