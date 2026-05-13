@@ -3,7 +3,7 @@ import { createGateway } from '@ai-sdk/gateway'
 import { google } from '@ai-sdk/google'  
 import { createGroq } from '@ai-sdk/groq'  
 import { createOpenAI, openai } from '@ai-sdk/openai'  
-import { createProviderRegistry, LanguageModel } from 'ai'  
+import { createProviderRegistry, LanguageModel, experimental_wrapModel } from 'ai'  
 import { createOllama } from 'ai-sdk-ollama'  
   
 const providers: Record<string, any> = {  
@@ -22,7 +22,7 @@ const providers: Record<string, any> = {
   }),  
   openrouter: createOpenAI({  
     apiKey: process.env.OPENROUTER_API_KEY,  
-    baseURL: 'https://openrouter.ai/api/v1',  
+    baseURL: 'openrouter.ai',  
     headers: {  
       'HTTP-Referer': 'https://morphic.sh',  
       'X-Title': 'Morphic'  
@@ -30,7 +30,7 @@ const providers: Record<string, any> = {
   }),  
   nvidia: createOpenAI({  
     apiKey: process.env.NVIDIA_API_KEY,  
-    baseURL: 'https://integrate.api.nvidia.com/v1'  
+    baseURL: 'nvidia.com'  
   })  
 }  
   
@@ -48,7 +48,6 @@ export function getModel(model: string): LanguageModel {
   if (model.startsWith('ollama:') && ollamaProvider) {  
     const modelId = model.slice('ollama:'.length)  
     
-    // Evaluate if the model supports thinking. Disable explicitly for tinyllama.
     const supportsThinking = !modelId.toLowerCase().includes('tinyllama')
     const lm = ollamaProvider(modelId, { think: supportsThinking })  
     
@@ -56,11 +55,25 @@ export function getModel(model: string): LanguageModel {
       value: {},  
       configurable: true  
     })  
+
+    // Strip tool calling configurations if the active model is tinyllama
+    if (modelId.toLowerCase().includes('tinyllama')) {
+      return experimental_wrapModel({
+        model: lm,
+        middleware: {
+          transformParams: async ({ params }) => {
+            const { tools, ...restParams } = params
+            return { params: restParams }
+          }
+        }
+      })
+    }
+    
     return lm  
   }  
   
   return registry.languageModel(  
-    model as Parameters<typeof registry.languageModel>[0]  
+    model as Parameters<typeof registry.languageModel>  
   )  
 }  
   
