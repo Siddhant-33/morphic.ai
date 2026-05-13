@@ -39,10 +39,9 @@ const PROVIDER_LOGO_BY_ID: Record<string, string> = {
 }  
   
 const PROVIDER_INITIALS: Record<string, { text: string; bg: string }> = {  
-  deepseek: { text: 'DS', bg: '#4D6BFE' },  
-  openrouter: { text: 'OR', bg: '#6E42CA' },  
   groq: { text: 'GQ', bg: '#F55036' },  
-  huggingface: { text: 'HF', bg: '#FF9D00' }  
+  openrouter: { text: 'OR', bg: '#6E42CA' },  
+  nvidia: { text: 'NV', bg: '#76B900' }  
 }  
   
 function ProviderLogo({ providerId }: { providerId: string }) {  
@@ -63,8 +62,8 @@ function ProviderLogo({ providerId }: { providerId: string }) {
   if (initials) {  
     return (  
       <span  
-        className="size-4 rounded-full flex items-center justify-center shrink-0 text-white"  
-        style={{ backgroundColor: initials.bg, fontSize: '6px', fontWeight: 700 }}  
+        className="size-4 shrink-0 rounded-full flex items-center justify-center text-white font-bold"  
+        style={{ backgroundColor: initials.bg, fontSize: '7px' }}  
       >  
         {initials.text}  
       </span>  
@@ -107,9 +106,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
   
   const selectedModel = selectableByKey[selectedModelKey]  
   
-  if (!data.enabled) {  
-    return null  
-  }  
+  if (!data.enabled) return null  
   
   if (!data.hasAvailableModels) {  
     return (  
@@ -126,9 +123,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
     )  
   }  
   
-  if (!selectedModel) {  
-    return null  
-  }  
+  if (!selectedModel) return null  
   
   return (  
     <Popover open={open} onOpenChange={setOpen}>  
@@ -167,10 +162,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                       value={`${value} ${model.name} ${provider}`}  
                       onSelect={() => {  
                         const nextModel = selectableByKey[value]  
-                        if (!nextModel) {  
-                          return  
-                        }  
-  
+                        if (!nextModel) return  
                         setSelectedModelKey(value)  
                         setCookie(  
                           MODEL_SELECTION_COOKIE,  
