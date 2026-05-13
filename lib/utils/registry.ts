@@ -58,20 +58,24 @@ export function getModel(model: string): LanguageModel {
 
     // Secure execution wrapper for models missing native tool support
     if (modelId.toLowerCase().includes('tinyllama')) {
-      return new Proxy(lm, {
-        get(target, prop, receiver) {
+      const proxiedModel = new Proxy(lm, {
+        get(target: any, prop: string | symbol, receiver: any) {
           if (prop === 'doGenerate' || prop === 'doStream') {
-            return async function (options: any, ...args: unknown[]) {
+            return async function (options: any, ...args: any[]) {
               if (options && options.tools) {
                 delete options.tools;
               }
-              const fn = Reflect.get(target, prop, receiver);
-              return fn.apply(target, [options, ...args]);
+              const fn = target[prop];
+              if (typeof fn === 'function') {
+                return fn.apply(target, [options, ...args]);
+              }
+              return Reflect.get(target, prop, receiver);
             };
           }
           return Reflect.get(target, prop, receiver);
         }
       });
+      return proxiedModel as LanguageModel;
     }
     
     return lm  
