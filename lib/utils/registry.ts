@@ -1,6 +1,7 @@
 import { anthropic } from '@ai-sdk/anthropic'  
 import { createGateway } from '@ai-sdk/gateway'  
 import { google } from '@ai-sdk/google'  
+import { createGroq } from '@ai-sdk/groq'  
 import { createOpenAI, openai } from '@ai-sdk/openai'  
 import { createProviderRegistry, LanguageModel } from 'ai'  
 import { createOllama } from 'ai-sdk-ollama'  
@@ -16,21 +17,20 @@ const providers: Record<string, any> = {
   gateway: createGateway({  
     apiKey: process.env.AI_GATEWAY_API_KEY  
   }),  
-  deepseek: createOpenAI({  
-    apiKey: process.env.DEEPSEEK_API_KEY,  
-    baseURL: 'https://api.deepseek.com/v1',  
+  groq: createGroq({  
+    apiKey: process.env.GROQ_API_KEY  
   }),  
   openrouter: createOpenAI({  
     apiKey: process.env.OPENROUTER_API_KEY,  
-    baseURL: 'https://openrouter.ai/api/v1',    
+    baseURL: 'https://openrouter.ai/api/v1',  
+    headers: {  
+      'HTTP-Referer': 'https://morphic.sh',  
+      'X-Title': 'Morphic'  
+    }  
   }),  
-  groq: createOpenAI({  
-    apiKey: process.env.GROQ_API_KEY,  
-    baseURL: 'https://api.groq.com/openai/v1',    
-  }),  
-  huggingface: createOpenAI({  
-    apiKey: process.env.HUGGINGFACE_API_KEY,  
-    baseURL: 'https://api-inference.huggingface.co/v1',  
+  nvidia: createOpenAI({  
+    apiKey: process.env.NVIDIA_API_KEY,  
+    baseURL: 'https://integrate.api.nvidia.com/v1'  
   })  
 }  
   
@@ -54,6 +54,7 @@ export function getModel(model: string): LanguageModel {
     })  
     return lm  
   }  
+  
   return registry.languageModel(  
     model as Parameters<typeof registry.languageModel>[0]  
   )  
@@ -76,14 +77,12 @@ export function isProviderEnabled(providerId: string): boolean {
       return !!process.env.AI_GATEWAY_API_KEY  
     case 'ollama':  
       return !!process.env.OLLAMA_BASE_URL  
-    case 'deepseek':  
-      return !!process.env.DEEPSEEK_API_KEY  
-    case 'openrouter':  
-      return !!process.env.OPENROUTER_API_KEY  
     case 'groq':  
       return !!process.env.GROQ_API_KEY  
-    case 'huggingface':  
-      return !!process.env.HUGGINGFACE_API_KEY  
+    case 'openrouter':  
+      return !!process.env.OPENROUTER_API_KEY  
+    case 'nvidia':  
+      return !!process.env.NVIDIA_API_KEY  
     default:  
       return false  
   }  
