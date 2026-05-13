@@ -61,12 +61,12 @@ export function getModel(model: string): LanguageModel {
       return new Proxy(lm, {
         get(target, prop, receiver) {
           if (prop === 'doGenerate' || prop === 'doStream') {
-            return async function (options: any, ...args: any[]) {
+            return async function (options: any, ...args: unknown[]) {
               if (options && options.tools) {
                 delete options.tools;
               }
               const fn = Reflect.get(target, prop, receiver);
-              return fn.call(target, options, ...args);
+              return fn.apply(target, [options, ...args]);
             };
           }
           return Reflect.get(target, prop, receiver);
