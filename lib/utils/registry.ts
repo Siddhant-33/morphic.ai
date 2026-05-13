@@ -3,7 +3,7 @@ import { createGateway } from '@ai-sdk/gateway'
 import { google } from '@ai-sdk/google'  
 import { createGroq } from '@ai-sdk/groq'  
 import { createOpenAI, openai } from '@ai-sdk/openai'  
-import { createProviderRegistry, LanguageModel, wrapModel } from 'ai'  
+import { createProviderRegistry, LanguageModel } from 'ai'  
 import { createOllama } from 'ai-sdk-ollama'  
   
 const providers: Record<string, any> = {  
@@ -56,24 +56,29 @@ export function getModel(model: string): LanguageModel {
       configurable: true  
     })  
 
-    // Strip tool calling configurations safely using stable wrapModel middleware
+    // Secure execution wrapper for models missing native tool support
     if (modelId.toLowerCase().includes('tinyllama')) {
-      return wrapModel({
-        model: lm,
-        middleware: {
-          transformParams: async ({ params }) => {
-            const { tools, ...restParams } = params
-            return { params: restParams }
+      return new Proxy(lm, {
+        get(target, prop, receiver) {
+          if (prop === 'doGenerate' || prop === 'doStream') {
+            return async function (options: any, ...args: any[]) {
+              if (options && options.tools) {
+                delete options.tools;
+              }
+              const fn = Reflect.get(target, prop, receiver);
+              return fn.call(target, options, ...args);
+            };
           }
+          return Reflect.get(target, prop, receiver);
         }
-      })
+      });
     }
     
     return lm  
   }  
   
   return registry.languageModel(  
-    model as Parameters<typeof registry.languageModel>[0]  
+    model as Parameters<typeof registry.languageModel>  
   )  
 }  
   
