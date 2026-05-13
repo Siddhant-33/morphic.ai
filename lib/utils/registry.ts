@@ -47,7 +47,11 @@ export const registry = createProviderRegistry(providers)
 export function getModel(model: string): LanguageModel {  
   if (model.startsWith('ollama:') && ollamaProvider) {  
     const modelId = model.slice('ollama:'.length)  
-    const lm = ollamaProvider(modelId, { think: true })  
+    
+    // Evaluate if the model supports thinking. Disable explicitly for tinyllama.
+    const supportsThinking = !modelId.toLowerCase().includes('tinyllama')
+    const lm = ollamaProvider(modelId, { think: supportsThinking })  
+    
     Object.defineProperty(lm, 'supportedUrls', {  
       value: {},  
       configurable: true  
