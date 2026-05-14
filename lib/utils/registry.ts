@@ -1,7 +1,6 @@
 import { anthropic } from '@ai-sdk/anthropic'  
 import { createGateway } from '@ai-sdk/gateway'  
 import { google } from '@ai-sdk/google'  
-import { createGroq } from '@ai-sdk/groq'  
 import { createOpenAI, openai } from '@ai-sdk/openai'  
 import { createProviderRegistry, LanguageModel } from 'ai'  
 import { createOllama } from 'ai-sdk-ollama'  
@@ -17,20 +16,17 @@ const providers: Record<string, any> = {
   gateway: createGateway({  
     apiKey: process.env.AI_GATEWAY_API_KEY  
   }),  
-  groq: createGroq({  
-    apiKey: process.env.GROQ_API_KEY  
+  groq: createOpenAI({  
+    apiKey: process.env.GROQ_API_KEY,  
+    baseURL: 'https://api.groq.com/openai/v1'  
   }),  
   openrouter: createOpenAI({  
     apiKey: process.env.OPENROUTER_API_KEY,  
-    baseURL: 'openrouter.ai',  
-    headers: {  
-      'HTTP-Referer': 'https://morphic.sh',  
-      'X-Title': 'Morphic'  
-    }  
+    baseURL: 'https://openrouter.ai/api/v1'  
   }),  
   nvidia: createOpenAI({  
     apiKey: process.env.NVIDIA_API_KEY,  
-    baseURL: 'nvidia.com'  
+    baseURL: 'https://integrate.api.nvidia.com/v1'  
   })  
 }  
   
@@ -47,44 +43,17 @@ export const registry = createProviderRegistry(providers)
 export function getModel(model: string): LanguageModel {  
   if (model.startsWith('ollama:') && ollamaProvider) {  
     const modelId = model.slice('ollama:'.length)  
-    
-    const supportsThinking = !modelId.toLowerCase().includes('tinyllama')
-    const lm = ollamaProvider(modelId, { think: supportsThinking })  
-    
+    const lm = ollamaProvider(modelId, { think: true })  
     Object.defineProperty(lm, 'supportedUrls', {  
       value: {},  
       configurable: true  
     })  
-
-    if (modelId.toLowerCase().includes('tinyllama')) {
-      const proxiedModel = new Proxy(lm, {
-        get(target: any, prop: string | symbol, receiver: any) {
-          if (prop === 'doGenerate' || prop === 'doStream') {
-            return async function (options: any, ...args: any[]) {
-              const secureOptions = {
-                ...options,
-                tools: undefined,
-                toolChoice: undefined,
-                mode: 'text'
-              };
-              
-              const fn = target[prop];
-              if (typeof fn === 'function') {
-                return fn.apply(target, [secureOptions, ...args]);
-              }
-              return Reflect.get(target, prop, receiver);
-            };
-          }
-          return Reflect.get(target, prop, receiver);
-        }
-      });
-      return proxiedModel as LanguageModel;
-    }
-    
     return lm  
   }  
   
-  return registry.languageModel(model as any)  
+  return registry.languageModel(  
+    model as Parameters<typeof registry.languageModel>[0]  
+  )  
 }  
   
 export function isProviderEnabled(providerId: string): boolean {  
