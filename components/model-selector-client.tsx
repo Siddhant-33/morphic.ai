@@ -36,14 +36,14 @@ const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   gateway: '/providers/logos/gateway.svg',  
   'openai-compatible': '/providers/logos/openai-compatible.svg',  
   ollama: '/providers/logos/ollama.svg'  
-}  
+}   
   
 const PROVIDER_INITIALS: Record<string, { text: string; bg: string }> = {  
   groq: { text: 'GQ', bg: '#F55036' },  
   openrouter: { text: 'OR', bg: '#6E42CA' },  
   nvidia: { text: 'NV', bg: '#76B900' }  
 }  
-  
+
 function ProviderLogo({ providerId }: { providerId: string }) {  
   const logoSrc = PROVIDER_LOGO_BY_ID[providerId]  
   if (logoSrc) {  
@@ -58,12 +58,12 @@ function ProviderLogo({ providerId }: { providerId: string }) {
     )  
   }  
   
-  const initials = PROVIDER_INITIALS[providerId]  
+ const initials = PROVIDER_INITIALS[providerId]  
   if (initials) {  
     return (  
       <span  
-        className="size-4 shrink-0 rounded-full flex items-center justify-center text-white font-bold"  
-        style={{ backgroundColor: initials.bg, fontSize: '7px' }}  
+        className="size-4 rounded-full shrink-0 flex items-center justify-center text-white font-bold"  
+        style={{ backgroundColor: initials.bg, fontSize: '6px' }}  
       >  
         {initials.text}  
       </span>  
@@ -71,7 +71,7 @@ function ProviderLogo({ providerId }: { providerId: string }) {
   }  
   
   return <span className="size-4 rounded-full bg-muted-foreground/30" />  
-}  
+}
   
 interface ModelSelectorClientProps {  
   data: ModelSelectorData  
