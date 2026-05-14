@@ -36,14 +36,15 @@ const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   gateway: '/providers/logos/gateway.svg',  
   'openai-compatible': '/providers/logos/openai-compatible.svg',  
   ollama: '/providers/logos/ollama.svg'  
-}   
+}  
   
+// Colored initials for providers without SVG logo files  
 const PROVIDER_INITIALS: Record<string, { text: string; bg: string }> = {  
   groq: { text: 'GQ', bg: '#F55036' },  
   openrouter: { text: 'OR', bg: '#6E42CA' },  
   nvidia: { text: 'NV', bg: '#76B900' }  
 }  
-
+  
 function ProviderLogo({ providerId }: { providerId: string }) {  
   const logoSrc = PROVIDER_LOGO_BY_ID[providerId]  
   if (logoSrc) {  
@@ -58,12 +59,12 @@ function ProviderLogo({ providerId }: { providerId: string }) {
     )  
   }  
   
- const initials = PROVIDER_INITIALS[providerId]  
+  const initials = PROVIDER_INITIALS[providerId]  
   if (initials) {  
     return (  
       <span  
-        className="size-4 rounded-full shrink-0 flex items-center justify-center text-white font-bold"  
-        style={{ backgroundColor: initials.bg, fontSize: '6px' }}  
+        className="size-4 shrink-0 rounded-sm flex items-center justify-center text-white font-bold"  
+        style={{ backgroundColor: initials.bg, fontSize: '7px' }}  
       >  
         {initials.text}  
       </span>  
@@ -71,7 +72,7 @@ function ProviderLogo({ providerId }: { providerId: string }) {
   }  
   
   return <span className="size-4 rounded-full bg-muted-foreground/30" />  
-}
+}  
   
 interface ModelSelectorClientProps {  
   data: ModelSelectorData  
@@ -106,7 +107,9 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
   
   const selectedModel = selectableByKey[selectedModelKey]  
   
-  if (!data.enabled) return null  
+  if (!data.enabled) {  
+    return null  
+  }  
   
   if (!data.hasAvailableModels) {  
     return (  
@@ -123,7 +126,9 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
     )  
   }  
   
-  if (!selectedModel) return null  
+  if (!selectedModel) {  
+    return null  
+  }  
   
   return (  
     <Popover open={open} onOpenChange={setOpen}>  
@@ -162,7 +167,10 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                       value={`${value} ${model.name} ${provider}`}  
                       onSelect={() => {  
                         const nextModel = selectableByKey[value]  
-                        if (!nextModel) return  
+                        if (!nextModel) {  
+                          return  
+                        }  
+  
                         setSelectedModelKey(value)  
                         setCookie(  
                           MODEL_SELECTION_COOKIE,  
