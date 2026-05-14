@@ -23,7 +23,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   groq: 'Groq',  
   openrouter: 'OpenRouter',  
   nvidia: 'NVIDIA'  
-}
+}  
   
 function buildProviderOptions(  
   providerId: string,  
