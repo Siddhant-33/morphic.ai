@@ -5,7 +5,6 @@ import { createOpenAI, openai } from '@ai-sdk/openai'
 import { createProviderRegistry, LanguageModel } from 'ai'  
 import { createOllama } from 'ai-sdk-ollama'  
   
-// Build providers object conditionally  
 const providers: Record<string, any> = {  
   openai,  
   anthropic,  
@@ -16,18 +15,6 @@ const providers: Record<string, any> = {
   }),  
   gateway: createGateway({  
     apiKey: process.env.AI_GATEWAY_API_KEY  
-  }),  
-  groq: createOpenAI({  
-    apiKey: process.env.GROQ_API_KEY,  
-    baseURL: 'https://api.groq.com/openai/v1'  
-  }),  
-  openrouter: createOpenAI({  
-    apiKey: process.env.OPENROUTER_API_KEY,  
-    baseURL: 'https://openrouter.ai/api/v1'  
-  }),  
-  nvidia: createOpenAI({  
-    apiKey: process.env.NVIDIA_API_KEY,  
-    baseURL: 'https://integrate.api.nvidia.com/v1'  
   })  
 }  
   
@@ -40,18 +27,38 @@ if (ollamaProvider) {
   providers.ollama = ollamaProvider  
 }  
   
+// Add Groq if configured  
+if (process.env.GROQ_API_KEY) {  
+  providers.groq = createOpenAI({  
+    apiKey: process.env.GROQ_API_KEY,  
+    baseURL: 'https://api.groq.com/openai/v1'  
+  })  
+}  
+  
+// Add OpenRouter if configured  
+if (process.env.OPENROUTER_API_KEY) {  
+  providers.openrouter = createOpenAI({  
+    apiKey: process.env.OPENROUTER_API_KEY,  
+    baseURL: 'https://openrouter.ai/api/v1'  
+  })  
+}  
+  
+// Add NVIDIA if configured  
+if (process.env.NVIDIA_API_KEY) {  
+  providers.nvidia = createOpenAI({  
+    apiKey: process.env.NVIDIA_API_KEY,  
+    baseURL: 'https://integrate.api.nvidia.com/v1'  
+  })  
+}  
+  
 export const registry = createProviderRegistry(providers)  
   
 export function getModel(model: string): LanguageModel {  
   // For Ollama models, bypass the registry to pass model-level settings  
-  // that ai-sdk-ollama requires (think, supportedUrls override).  
   if (model.startsWith('ollama:') && ollamaProvider) {  
     const modelId = model.slice('ollama:'.length)  
     const lm = ollamaProvider(modelId, { think: true })  
   
-    // Ollama's Chat API only accepts base64 in the images field, not URLs.  
-    // Override supportedUrls to force AI SDK to download images and convert  
-    // them to base64 before sending to the model.  
     Object.defineProperty(lm, 'supportedUrls', {  
       value: {},  
       configurable: true  
@@ -91,4 +98,441 @@ export function isProviderEnabled(providerId: string): boolean {
     default:  
       return false  
   }  
+}
+File 2: lib/models/fetch-models.ts
+import { createGateway } from '@ai-sdk/gateway'  
+  
+import { Model } from '@/lib/types/models'  
+import { isProviderEnabled } from '@/lib/utils/registry'  
+  
+export type ModelsByProvider = Record<string, Model[]>  
+  
+const MODEL_CACHE_TTL_MS = 2 * 60 * 1000  
+const DATE_SNAPSHOT_SUFFIX_REGEX = /-\d{4}-\d{2}-\d{2}$/  
+const GOOGLE_PREVIEW_SNAPSHOT_REGEX = /preview-\d{2}-\d{2,4}$/i  
+const OPENAI_ALLOWED_PREFIXES = ['gpt-5', 'o1', 'o3', 'o4']  
+const OPENAI_EXCLUDED_KEYWORDS = [  
+  'embed',  
+  'tts',  
+  'whisper',  
+  'dall-e',  
+  'davinci',  
+  'babbage',  
+  'ft:',  
+  'image',  
+  'audio',  
+  'realtime',  
+  'codex',  
+  'search',  
+  'transcribe',  
+  'deep-research',  
+  'oss',  
+  'instruct',  
+  'chat-latest'  
+]  
+const ANTHROPIC_ALLOWED_PREFIXES = [  
+  'claude-opus-4',  
+  'claude-sonnet-4',  
+  'claude-haiku-4'  
+]  
+const GOOGLE_ALLOWED_PREFIXES = ['gemini-2.5', 'gemini-3']  
+const GOOGLE_EXCLUDED_KEYWORDS = ['image', 'live', 'native-audio', 'embedding']  
+  
+let modelsCache:  
+  | {  
+      expiresAt: number  
+      value: ModelsByProvider  
+    }  
+  | undefined  
+  
+function sortModels(models: Model[]): Model[] {  
+  return [...models].sort((a, b) => a.name.localeCompare(b.name))  
+}  
+  
+function dedupeModels(models: Model[]): Model[] {  
+  const seen = new Set<string>()  
+  const deduped: Model[] = []  
+  
+  for (const model of models) {  
+    const key = `${model.provider}|${model.providerId}|${model.id}`  
+    if (seen.has(key)) {  
+      continue  
+    }  
+    seen.add(key)  
+    deduped.push(model)  
+  }  
+  
+  return deduped  
+}  
+  
+function groupByProvider(models: Model[]): ModelsByProvider {  
+  return models.reduce<ModelsByProvider>((acc, model) => {  
+    const key = model.provider  
+    if (!acc[key]) {  
+      acc[key] = []  
+    }  
+    acc[key].push(model)  
+    return acc  
+  }, {})  
+}  
+  
+function hasDateSnapshotSuffix(modelId: string): boolean {  
+  return DATE_SNAPSHOT_SUFFIX_REGEX.test(modelId)  
+}  
+  
+function passesOpenAIFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) return false  
+  if (!OPENAI_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) return false  
+  return !OPENAI_EXCLUDED_KEYWORDS.some(keyword =>  
+    id.toLowerCase().includes(keyword)  
+  )  
+}  
+  
+function passesAnthropicFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) return false  
+  return ANTHROPIC_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))  
+}  
+  
+function passesGoogleFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) return false  
+  if (GOOGLE_PREVIEW_SNAPSHOT_REGEX.test(id)) return false  
+  if (!GOOGLE_ALLOWED_PREFIXES.some(prefix => id.startsWith(prefix))) return false  
+  return !GOOGLE_EXCLUDED_KEYWORDS.some(keyword =>  
+    id.toLowerCase().includes(keyword)  
+  )  
+}  
+  
+function passesGatewayFilters(id: string): boolean {  
+  if (hasDateSnapshotSuffix(id)) return false  
+  const separatorIndex = id.indexOf('/')  
+  if (separatorIndex <= 0) return true  
+  const provider = id.slice(0, separatorIndex)  
+  const modelId = id.slice(separatorIndex + 1)  
+  if (!modelId) return false  
+  switch (provider) {  
+    case 'openai':  
+      return passesOpenAIFilters(modelId)  
+    case 'anthropic':  
+      return passesAnthropicFilters(modelId)  
+    case 'google':  
+      return passesGoogleFilters(modelId)  
+    default:  
+      return true  
+  }  
+}  
+  
+async function fetchJson(  
+  url: string,  
+  headers: HeadersInit  
+): Promise<Record<string, any>> {  
+  const response = await fetch(url, { headers, method: 'GET' })  
+  if (!response.ok) {  
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`)  
+  }  
+  return (await response.json()) as Record<string, any>  
+}  
+  
+export async function fetchOpenAIModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('openai')) return []  
+  
+  try {  
+    const json = await fetchJson('https://api.openai.com/v1/models', {  
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`  
+    })  
+    const data = Array.isArray(json?.data) ? json.data : []  
+    return sortModels(  
+      dedupeModels(  
+        data  
+          .map(item => String(item?.id ?? ''))  
+          .filter(Boolean)  
+          .filter(passesOpenAIFilters)  
+          .map(id => ({  
+            id,  
+            name: id,  
+            provider: 'OpenAI',  
+            providerId: 'openai'  
+          }))  
+      )  
+    )  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch OpenAI models:', error)  
+    return []  
+  }  
+}  
+  
+export async function fetchAnthropicModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('anthropic')) return []  
+  
+  try {  
+    const models: Model[] = []  
+    const baseUrl = 'https://api.anthropic.com/v1/models'  
+    let afterId: string | undefined  
+    let hasMore = true  
+  
+    while (hasMore) {  
+      const url = new URL(baseUrl)  
+      url.searchParams.set('limit', '100')  
+      if (afterId) url.searchParams.set('after_id', afterId)  
+  
+      const json = await fetchJson(url.toString(), {  
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,  
+        'anthropic-version': '2023-06-01'  
+      })  
+  
+      const data = Array.isArray(json?.data) ? json.data : []  
+      models.push(  
+        ...data  
+          .map(item => {  
+            const id = String(item?.id ?? '')  
+            if (!id) return null  
+            return {  
+              id,  
+              name: String(item?.display_name ?? id),  
+              provider: 'Anthropic',  
+              providerId: 'anthropic'  
+            } satisfies Model  
+          })  
+          .filter((model): model is Model => model !== null)  
+          .filter(model => passesAnthropicFilters(model.id))  
+      )  
+  
+      hasMore = Boolean(json?.has_more)  
+      afterId = typeof json?.last_id === 'string' ? json.last_id : undefined  
+      if (!hasMore || !afterId) break  
+    }  
+  
+    return sortModels(dedupeModels(models))  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Anthropic models:', error)  
+    return []  
+  }  
+}  
+  
+export async function fetchGoogleModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('google')) return []  
+  
+  try {  
+    const models: Model[] = []  
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY  
+    let nextPageToken: string | undefined  
+  
+    while (true) {  
+      const url = new URL(  
+        'https://generativelanguage.googleapis.com/v1beta/models'  
+      )  
+      url.searchParams.set('key', apiKey!)  
+      if (nextPageToken) url.searchParams.set('pageToken', nextPageToken)  
+  
+      const json = await fetchJson(url.toString(), {})  
+      const data = Array.isArray(json?.models) ? json.models : []  
+  
+      models.push(  
+        ...data  
+          .filter(item =>  
+            Array.isArray(item?.supportedGenerationMethods)  
+              ? item.supportedGenerationMethods.includes('generateContent')  
+              : false  
+          )  
+          .map(item => {  
+            const rawName = String(item?.name ?? '')  
+            const id = rawName.startsWith('models/')  
+              ? rawName.slice('models/'.length)  
+              : rawName  
+            if (!id) return null  
+            return {  
+              id,  
+              name: String(item?.displayName ?? id),  
+              provider: 'Google',  
+              providerId: 'google'  
+            } satisfies Model  
+          })  
+          .filter((model): model is Model => model !== null)  
+          .filter(model => passesGoogleFilters(model.id))  
+      )  
+  
+      nextPageToken =  
+        typeof json?.nextPageToken === 'string' ? json.nextPageToken : undefined  
+      if (!nextPageToken) break  
+    }  
+  
+    return sortModels(dedupeModels(models))  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Google models:', error)  
+    return []  
+  }  
+}  
+  
+export async function fetchOllamaModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('ollama')) return []  
+  
+  try {  
+    const baseUrl = process.env.OLLAMA_BASE_URL  
+    const url = new URL('/api/tags', baseUrl).toString()  
+    const json = await fetchJson(url, {})  
+    const data = Array.isArray(json?.models) ? json.models : []  
+  
+    return sortModels(  
+      dedupeModels(  
+        data  
+          .map(item => String(item?.name ?? ''))  
+          .filter(Boolean)  
+          .filter(name => !name.toLowerCase().includes('embed'))  
+          .map(  
+            name =>  
+              ({  
+                id: name,  
+                name,  
+                provider: 'Ollama',  
+                providerId: 'ollama',  
+                providerOptions: {  
+                  ollama: { think: true }  
+                }  
+              }) satisfies Model  
+          )  
+      )  
+    )  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Ollama models:', error)  
+    return []  
+  }  
+}  
+  
+export async function fetchGatewayModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('gateway')) return []  
+  
+  try {  
+    const gateway = createGateway({  
+      apiKey: process.env.AI_GATEWAY_API_KEY  
+    })  
+    const metadata = await gateway.getAvailableModels()  
+    const availableModels = metadata.models ?? []  
+  
+    return sortModels(  
+      dedupeModels(  
+        availableModels  
+          .filter(model => model?.modelType === 'language')  
+          .map(model => {  
+            const id = String(model?.id ?? '')  
+            if (!id) return null  
+            return {  
+              id,  
+              name: String(model?.name ?? id),  
+              provider: 'Gateway',  
+              providerId: 'gateway'  
+            } satisfies Model  
+          })  
+          .filter((model): model is Model => model !== null)  
+          .filter(model => passesGatewayFilters(model.id))  
+      )  
+    )  
+  } catch (error) {  
+    console.warn('[ModelFetch] Failed to fetch Gateway models:', error)  
+    return []  
+  }  
+}  
+  
+// ── Groq ──────────────────────────────────────────────────────────────────────  
+// Only confirmed working, non-decommissioned models as of 2025  
+export async function fetchGroqModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('groq')) return []  
+  
+  const models: Model[] = [  
+    { id: 'llama-3.1-8b-instant',                       name: 'Llama 3.1 8B Instant',          provider: 'Groq', providerId: 'groq' },  
+    { id: 'llama-3.3-70b-versatile',                    name: 'Llama 3.3 70B Versatile',        provider: 'Groq', providerId: 'groq' },  
+    { id: 'llama-3.1-70b-versatile',                    name: 'Llama 3.1 70B Versatile',        provider: 'Groq', providerId: 'groq' },  
+    { id: 'meta-llama/llama-4-scout-17b-16e-instruct',  name: 'Llama 4 Scout 17B',              provider: 'Groq', providerId: 'groq' },  
+    { id: 'mistral-saba-24b',                           name: 'Mistral Saba 24B',               provider: 'Groq', providerId: 'groq' },  
+    { id: 'compound-beta',                              name: 'Groq Compound Beta',             provider: 'Groq', providerId: 'groq' },  
+    { id: 'compound-beta-mini',                         name: 'Groq Compound Beta Mini',        provider: 'Groq', providerId: 'groq' },  
+  ]  
+  
+  return sortModels(dedupeModels(models))  
+}  
+  
+// ── OpenRouter ────────────────────────────────────────────────────────────────  
+// Free-tier models — note: "No endpoints found" is a capacity error from  
+// OpenRouter's side, not a code bug. Try again later if it appears.  
+export async function fetchOpenRouterModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('openrouter')) return []  
+  
+  const models: Model[] = [  
+    { id: 'meta-llama/llama-3.2-3b-instruct:free',   name: 'Llama 3.2 3B (Free)',         provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'meta-llama/llama-3.2-1b-instruct:free',   name: 'Llama 3.2 1B (Free)',         provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'google/gemma-3-4b-it:free',               name: 'Gemma 3 4B (Free)',           provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'google/gemma-3-1b-it:free',               name: 'Gemma 3 1B (Free)',           provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'qwen/qwen3-1.7b:free',                    name: 'Qwen3 1.7B (Free)',           provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'qwen/qwen3-0.6b:free',                    name: 'Qwen3 0.6B (Free)',           provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'microsoft/phi-4-mini-instruct:free',      name: 'Phi-4 Mini (Free)',           provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'deepseek/deepseek-r1:free',               name: 'DeepSeek R1 (Free)',          provider: 'OpenRouter', providerId: 'openrouter' },  
+    { id: 'deepseek/deepseek-v3:free',               name: 'DeepSeek V3 (Free)',          provider: 'OpenRouter', providerId: 'openrouter' },  
+  ]  
+  
+  return sortModels(dedupeModels(models))  
+}  
+  
+// ── NVIDIA NIM ────────────────────────────────────────────────────────────────  
+// Verified model IDs from https://build.nvidia.com  
+export async function fetchNvidiaModels(): Promise<Model[]> {  
+  if (!isProviderEnabled('nvidia')) return []  
+  
+  const models: Model[] = [  
+    { id: 'nvidia/llama-3.1-nemotron-70b-instruct',  name: 'Nemotron 70B Instruct',       provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'meta/llama-3.1-8b-instruct',              name: 'Llama 3.1 8B Instruct',       provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'meta/llama-3.3-70b-instruct',             name: 'Llama 3.3 70B Instruct',      provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'mistralai/mistral-nemo-12b-instruct',     name: 'Mistral NeMo 12B',            provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'google/gemma-3-27b-it',                   name: 'Gemma 3 27B',                 provider: 'NVIDIA', providerId: 'nvidia' },  
+    { id: 'microsoft/phi-3-mini-128k-instruct',      name: 'Phi-3 Mini 128K',             provider: 'NVIDIA', providerId: 'nvidia' },  
+  ]  
+  
+  return sortModels(dedupeModels(models))  
+}  
+  
+export async function fetchAvailableModels(options?: {  
+  forceRefresh?: boolean  
+}): Promise<ModelsByProvider> {  
+  const forceRefresh = options?.forceRefresh === true  
+  const now = Date.now()  
+  
+  if (!forceRefresh && modelsCache && modelsCache.expiresAt > now) {  
+    return modelsCache.value  
+  }  
+  
+  const [openai, anthropic, google, ollama, gateway, groq, openrouter, nvidia] =  
+    await Promise.all([  
+      fetchOpenAIModels(),  
+      fetchAnthropicModels(),  
+      fetchGoogleModels(),  
+      fetchOllamaModels(),  
+      fetchGatewayModels(),  
+      fetchGroqModels(),  
+      fetchOpenRouterModels(),  
+      fetchNvidiaModels()  
+    ])  
+  
+  const grouped = groupByProvider(  
+    dedupeModels([  
+      ...openai,  
+      ...anthropic,  
+      ...google,  
+      ...ollama,  
+      ...gateway,  
+      ...groq,  
+      ...openrouter,  
+      ...nvidia  
+    ])  
+  )  
+  
+  const normalized = Object.fromEntries(  
+    Object.entries(grouped).map(([provider, models]) => [  
+      provider,  
+      sortModels(models)  
+    ])  
+  )  
+  
+  modelsCache = {  
+    value: normalized,  
+    expiresAt: now + MODEL_CACHE_TTL_MS  
+  }  
+  
+  return normalized  
 }
