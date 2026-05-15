@@ -29,7 +29,6 @@ function modelKey(model: Model): string {
   return `${model.providerId}:${model.id}`  
 }  
   
-// Providers with existing SVG logo files  
 const PROVIDER_LOGO_BY_ID: Record<string, string> = {  
   openai: '/providers/logos/openai.svg',  
   anthropic: '/providers/logos/anthropic.svg',  
@@ -39,11 +38,10 @@ const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   ollama: '/providers/logos/ollama.svg'  
 }  
   
-// Providers without SVG files — rendered as colored initials circles  
 const PROVIDER_INITIALS: Record<string, { text: string; bg: string; color: string }> = {  
-  groq:        { text: 'GQ', bg: '#f55036', color: '#ffffff' },  
-  openrouter:  { text: 'OR', bg: '#6366f1', color: '#ffffff' },  
-  nvidia:      { text: 'NV', bg: '#76b900', color: '#ffffff' }  
+  groq: { text: 'GQ', bg: '#f55036', color: '#fff' },  
+  openrouter: { text: 'OR', bg: '#6366f1', color: '#fff' },  
+  nvidia: { text: 'NV', bg: '#76b900', color: '#fff' }  
 }  
   
 function ProviderLogo({ providerId }: { providerId: string }) {  
@@ -168,7 +166,9 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                       value={`${value} ${model.name} ${provider}`}  
                       onSelect={() => {  
                         const nextModel = selectableByKey[value]  
-                        if (!nextModel) return  
+                        if (!nextModel) {  
+                          return  
+                        }  
   
                         setSelectedModelKey(value)  
                         setCookie(  
