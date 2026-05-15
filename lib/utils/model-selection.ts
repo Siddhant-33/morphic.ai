@@ -31,9 +31,12 @@ function buildProviderOptions(
 ): Model['providerOptions'] | undefined {  
   if (providerId === 'ollama') {  
     return {  
-      ollama: { think: true }  
+      ollama: {  
+        think: true  
+      }  
     }  
   }  
+  
   return undefined  
 }  
   
@@ -43,10 +46,14 @@ function pickFirstFetchedModel(
   const providers = Object.keys(modelsByProvider).sort((a, b) =>  
     a.localeCompare(b)  
   )  
+  
   for (const provider of providers) {  
     const firstModel = modelsByProvider[provider]?.[0]  
-    if (firstModel) return firstModel  
+    if (firstModel) {  
+      return firstModel  
+    }  
   }  
+  
   return null  
 }  
   
@@ -57,6 +64,7 @@ interface ModelSelectionParams {
   
 function buildLocalCookieModel(providerId: string, modelId: string): Model {  
   const providerOptions = buildProviderOptions(providerId, modelId)  
+  
   return {  
     id: modelId,  
     name: modelId,  
@@ -69,7 +77,9 @@ function buildLocalCookieModel(providerId: string, modelId: string): Model {
 function resolveModelForMode(mode: SearchMode): Model | undefined {  
   try {  
     const model = getModelForMode(mode)  
-    if (!model) return undefined  
+    if (!model) {  
+      return undefined  
+    }  
   
     if (!isProviderEnabled(model.providerId)) {  
       console.warn(  
@@ -104,8 +114,47 @@ export async function selectModel({
             `[ModelSelection] Saved model provider "${parsedCookie.providerId}" is not enabled.`  
           )  
         } else {  
-          return buildLocalCook
-
-
-
-
+          return buildLocalCookieModel(  
+            parsedCookie.providerId,  
+            parsedCookie.modelId  
+          )  
+        }  
+      } catch (error) {  
+        console.error(  
+          '[ModelSelection] Failed to resolve model from cookie:',  
+          error  
+        )  
+      }  
+    }  
+  
+    if (isProviderEnabled(DEFAULT_MODEL.providerId)) {  
+      return DEFAULT_MODEL  
+    }  
+  
+    return pickFirstFetchedModel(await fetchAvailableModels())  
+  }  
+  
+  const requestedMode =  
+    searchMode && MODE_FALLBACK_ORDER.includes(searchMode)  
+      ? searchMode  
+      : 'quick'  
+  
+  const modePreferenceOrder: SearchMode[] = Array.from(  
+    new Set<SearchMode>([requestedMode, ...MODE_FALLBACK_ORDER])  
+  )  
+  
+  for (const candidateMode of modePreferenceOrder) {  
+    const model = resolveModelForMode(candidateMode)  
+    if (model) {  
+      return model  
+    }  
+  }  
+  
+  if (isProviderEnabled(DEFAULT_MODEL.providerId)) {  
+    return DEFAULT_MODEL  
+  }  
+  
+  return pickFirstFetchedModel(await fetchAvailableModels())  
+}  
+  
+export { DEFAULT_MODEL }
