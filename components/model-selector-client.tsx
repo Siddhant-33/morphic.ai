@@ -29,6 +29,7 @@ function modelKey(model: Model): string {
   return `${model.providerId}:${model.id}`  
 }  
   
+// Providers with existing SVG logo files  
 const PROVIDER_LOGO_BY_ID: Record<string, string> = {  
   openai: '/providers/logos/openai.svg',  
   anthropic: '/providers/logos/anthropic.svg',  
@@ -38,11 +39,11 @@ const PROVIDER_LOGO_BY_ID: Record<string, string> = {
   ollama: '/providers/logos/ollama.svg'  
 }  
   
-// Colored initials for providers without SVG logo files  
-const PROVIDER_INITIALS: Record<string, { text: string; bg: string }> = {  
-  groq: { text: 'GQ', bg: '#F55036' },  
-  openrouter: { text: 'OR', bg: '#6E42CA' },  
-  nvidia: { text: 'NV', bg: '#76B900' }  
+// Providers without SVG files — rendered as colored initials circles  
+const PROVIDER_INITIALS: Record<string, { text: string; bg: string; color: string }> = {  
+  groq:        { text: 'GQ', bg: '#f55036', color: '#ffffff' },  
+  openrouter:  { text: 'OR', bg: '#6366f1', color: '#ffffff' },  
+  nvidia:      { text: 'NV', bg: '#76b900', color: '#ffffff' }  
 }  
   
 function ProviderLogo({ providerId }: { providerId: string }) {  
@@ -63,8 +64,8 @@ function ProviderLogo({ providerId }: { providerId: string }) {
   if (initials) {  
     return (  
       <span  
-        className="size-4 shrink-0 rounded-sm flex items-center justify-center text-white font-bold"  
-        style={{ backgroundColor: initials.bg, fontSize: '7px' }}  
+        className="size-4 shrink-0 rounded-full flex items-center justify-center text-[8px] font-bold leading-none"  
+        style={{ backgroundColor: initials.bg, color: initials.color }}  
       >  
         {initials.text}  
       </span>  
@@ -167,9 +168,7 @@ export function ModelSelectorClient({ data }: ModelSelectorClientProps) {
                       value={`${value} ${model.name} ${provider}`}  
                       onSelect={() => {  
                         const nextModel = selectableByKey[value]  
-                        if (!nextModel) {  
-                          return  
-                        }  
+                        if (!nextModel) return  
   
                         setSelectedModelKey(value)  
                         setCookie(  
