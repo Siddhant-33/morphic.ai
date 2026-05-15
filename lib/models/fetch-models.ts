@@ -56,7 +56,6 @@ function dedupeModels(models: Model[]): Model[] {
     if (seen.has(key)) {  
       continue  
     }  
-  
     seen.add(key)  
     deduped.push(model)  
   }  
@@ -384,14 +383,7 @@ export async function fetchGroqModels(): Promise<Model[]> {
     return []  
   }  
   
-  // Only confirmed active models as of 2025 — no decommissioned ones  
-  const GROQ_MODELS: Model[] = [  
-    {  
-      id: 'llama-3.3-70b-versatile',  
-      name: 'Llama 3.3 70B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
+  const models: Model[] = [  
     {  
       id: 'llama-3.1-8b-instant',  
       name: 'Llama 3.1 8B Instant',  
@@ -399,32 +391,38 @@ export async function fetchGroqModels(): Promise<Model[]> {
       providerId: 'groq'  
     },  
     {  
+      id: 'llama-3.3-70b-versatile',  
+      name: 'Llama 3.3 70B Versatile',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
+      id: 'meta-llama/llama-4-scout-17b-16e-instruct',  
+      name: 'Llama 4 Scout 17B',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
+      id: 'compound-beta',  
+      name: 'Compound Beta (Agentic)',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
+      id: 'compound-beta-mini',  
+      name: 'Compound Beta Mini (Agentic)',  
+      provider: 'Groq',  
+      providerId: 'groq'  
+    },  
+    {  
       id: 'llama-3.1-70b-versatile',  
-      name: 'Llama 3.1 70B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
-    {  
-      id: 'llama3-8b-8192',  
-      name: 'Llama 3 8B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
-    {  
-      id: 'llama3-70b-8192',  
-      name: 'Llama 3 70B',  
-      provider: 'Groq',  
-      providerId: 'groq'  
-    },  
-    {  
-      id: 'mistral-saba-24b',  
-      name: 'Mistral Saba 24B',  
+      name: 'Llama 3.1 70B Versatile',  
       provider: 'Groq',  
       providerId: 'groq'  
     }  
   ]  
   
-  return GROQ_MODELS  
+  return sortModels(dedupeModels(models))  
 }  
   
 export async function fetchOpenRouterModels(): Promise<Model[]> {  
@@ -432,17 +430,22 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
     return []  
   }  
   
-  // Free-tier models on OpenRouter — verified working endpoints  
-  const OPENROUTER_MODELS: Model[] = [  
+  const models: Model[] = [  
     {  
-      id: 'google/gemma-3-27b-it:free',  
-      name: 'Gemma 3 27B (Free)',  
+      id: 'meta-llama/llama-3.2-3b-instruct:free',  
+      name: 'Llama 3.2 3B (Free)',  
       provider: 'OpenRouter',  
       providerId: 'openrouter'  
     },  
     {  
-      id: 'meta-llama/llama-3.2-3b-instruct:free',  
-      name: 'Llama 3.2 3B (Free)',  
+      id: 'google/gemma-3-1b-it:free',  
+      name: 'Gemma 3 1B (Free)',  
+      provider: 'OpenRouter',  
+      providerId: 'openrouter'  
+    },  
+    {  
+      id: 'microsoft/phi-4-mini-instruct:free',  
+      name: 'Phi-4 Mini (Free)',  
       provider: 'OpenRouter',  
       providerId: 'openrouter'  
     },  
@@ -453,26 +456,20 @@ export async function fetchOpenRouterModels(): Promise<Model[]> {
       providerId: 'openrouter'  
     },  
     {  
-      id: 'mistralai/mistral-small-3.2-24b-instruct:free',  
-      name: 'Mistral Small 3.2 24B (Free)',  
+      id: 'deepseek/deepseek-r1-0528-qwen3-8b:free',  
+      name: 'DeepSeek R1 Qwen3 8B (Free)',  
       provider: 'OpenRouter',  
       providerId: 'openrouter'  
     },  
     {  
-      id: 'deepseek/deepseek-r1-0528:free',  
-      name: 'DeepSeek R1 0528 (Free)',  
-      provider: 'OpenRouter',  
-      providerId: 'openrouter'  
-    },  
-    {  
-      id: 'microsoft/phi-4-reasoning-plus:free',  
-      name: 'Phi-4 Reasoning Plus (Free)',  
+      id: 'nousresearch/hermes-3-llama-3.1-8b:free',  
+      name: 'Hermes 3 Llama 3.1 8B (Free)',  
       provider: 'OpenRouter',  
       providerId: 'openrouter'  
     }  
   ]  
   
-  return OPENROUTER_MODELS  
+  return sortModels(dedupeModels(models))  
 }  
   
 export async function fetchNvidiaModels(): Promise<Model[]> {  
@@ -480,20 +477,7 @@ export async function fetchNvidiaModels(): Promise<Model[]> {
     return []  
   }  
   
-  // NVIDIA NIM free-tier models  
-  const NVIDIA_MODELS: Model[] = [  
-    {  
-      id: 'meta/llama-3.1-8b-instruct',  
-      name: 'Llama 3.1 8B Instruct',  
-      provider: 'NVIDIA',  
-      providerId: 'nvidia'  
-    },  
-    {  
-      id: 'meta/llama-3.3-70b-instruct',  
-      name: 'Llama 3.3 70B Instruct',  
-      provider: 'NVIDIA',  
-      providerId: 'nvidia'  
-    },  
+  const models: Model[] = [  
     {  
       id: 'nvidia/llama-3.1-nemotron-70b-instruct',  
       name: 'Nemotron 70B Instruct',  
@@ -501,20 +485,32 @@ export async function fetchNvidiaModels(): Promise<Model[]> {
       providerId: 'nvidia'  
     },  
     {  
+      id: 'meta/llama-3.1-8b-instruct',  
+      name: 'Llama 3.1 8B (NVIDIA)',  
+      provider: 'NVIDIA',  
+      providerId: 'nvidia'  
+    },  
+    {  
+      id: 'meta/llama-3.3-70b-instruct',  
+      name: 'Llama 3.3 70B (NVIDIA)',  
+      provider: 'NVIDIA',  
+      providerId: 'nvidia'  
+    },  
+    {  
       id: 'mistralai/mistral-7b-instruct-v0.3',  
-      name: 'Mistral 7B Instruct',  
+      name: 'Mistral 7B v0.3 (NVIDIA)',  
       provider: 'NVIDIA',  
       providerId: 'nvidia'  
     },  
     {  
       id: 'google/gemma-2-9b-it',  
-      name: 'Gemma 2 9B IT',  
+      name: 'Gemma 2 9B (NVIDIA)',  
       provider: 'NVIDIA',  
       providerId: 'nvidia'  
     }  
   ]  
   
-  return NVIDIA_MODELS  
+  return sortModels(dedupeModels(models))  
 }  
   
 export async function fetchAvailableModels(options?: {  
@@ -527,17 +523,25 @@ export async function fetchAvailableModels(options?: {
     return modelsCache.value  
   }  
   
-  const [openai, anthropic, google, ollama, gateway, groq, openrouter, nvidia] =  
-    await Promise.all([  
-      fetchOpenAIModels(),  
-      fetchAnthropicModels(),  
-      fetchGoogleModels(),  
-      fetchOllamaModels(),  
-      fetchGatewayModels(),  
-      fetchGroqModels(),  
-      fetchOpenRouterModels(),  
-      fetchNvidiaModels()  
-    ])  
+  const [  
+    openai,  
+    anthropic,  
+    google,  
+    ollama,  
+    gateway,  
+    groq,  
+    openrouter,  
+    nvidia  
+  ] = await Promise.all([  
+    fetchOpenAIModels(),  
+    fetchAnthropicModels(),  
+    fetchGoogleModels(),  
+    fetchOllamaModels(),  
+    fetchGatewayModels(),  
+    fetchGroqModels(),  
+    fetchOpenRouterModels(),  
+    fetchNvidiaModels()  
+  ])  
   
   const grouped = groupByProvider(  
     dedupeModels([  
@@ -552,7 +556,6 @@ export async function fetchAvailableModels(options?: {
     ])  
   )  
   
-  // Keep stable ordering for each provider list.  
   const normalized = Object.fromEntries(  
     Object.entries(grouped).map(([provider, models]) => [  
       provider,  
