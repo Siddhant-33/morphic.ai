@@ -2,11 +2,12 @@ import { Model } from '@/lib/types/models'
 import { isProviderEnabled } from '@/lib/utils/registry'
 
 /**
- * ONLY VERIFIED WORKING MODELS
- * NO DEAD MODELS
- * NO DEPRECATED IDS
- * NO NVIDIA
- * OPTIMIZED FOR MORPHIC STREAMING
+ * FINAL VERIFIED STABLE MODEL LIST
+ * - No deprecated IDs
+ * - No dead models
+ * - No preview-only broken models
+ * - Optimized for Morphic streaming
+ * - Around 30 stable models
  */
 
 async function fetchGroqModels(): Promise<Model[]> {
@@ -15,7 +16,7 @@ async function fetchGroqModels(): Promise<Model[]> {
   return [
     {
       id: 'llama-3.3-70b-versatile',
-      name: 'Llama 3.3 70B',
+      name: 'Llama 3.3 70B Versatile',
       provider: 'Groq',
       providerId: 'groq',
     },
@@ -28,8 +29,15 @@ async function fetchGroqModels(): Promise<Model[]> {
     },
 
     {
-      id: 'deepseek-r1-distill-llama-70b',
-      name: 'DeepSeek R1 Distill',
+      id: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      name: 'Llama 4 Scout',
+      provider: 'Groq',
+      providerId: 'groq',
+    },
+
+    {
+      id: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      name: 'Llama 4 Maverick',
       provider: 'Groq',
       providerId: 'groq',
     },
@@ -46,6 +54,47 @@ async function fetchGroqModels(): Promise<Model[]> {
       name: 'Gemma 2 9B',
       provider: 'Groq',
       providerId: 'groq',
+    },
+  ]
+}
+
+async function fetchGoogleModels(): Promise<Model[]> {
+  if (!isProviderEnabled('google')) return []
+
+  return [
+    {
+      id: 'gemini-2.5-pro',
+      name: 'Gemini 2.5 Pro',
+      provider: 'Google',
+      providerId: 'google',
+    },
+
+    {
+      id: 'gemini-2.5-flash',
+      name: 'Gemini 2.5 Flash',
+      provider: 'Google',
+      providerId: 'google',
+    },
+
+    {
+      id: 'gemini-2.5-flash-lite',
+      name: 'Gemini 2.5 Flash Lite',
+      provider: 'Google',
+      providerId: 'google',
+    },
+
+    {
+      id: 'gemini-2.0-flash',
+      name: 'Gemini 2.0 Flash',
+      provider: 'Google',
+      providerId: 'google',
+    },
+
+    {
+      id: 'gemini-2.0-flash-lite',
+      name: 'Gemini 2.0 Flash Lite',
+      provider: 'Google',
+      providerId: 'google',
     },
   ]
 }
@@ -97,36 +146,22 @@ async function fetchOpenRouterModels(): Promise<Model[]> {
     },
 
     {
-      id: 'deepseek/deepseek-chat-v3-0324',
-      name: 'DeepSeek V3',
+      id: 'meta-llama/llama-3.3-70b-instruct',
+      name: 'Llama 3.3 70B',
       provider: 'OpenRouter',
       providerId: 'openrouter',
     },
 
     {
-      id: 'deepseek/deepseek-r1:free',
-      name: 'DeepSeek R1 Free',
+      id: 'deepseek/deepseek-chat',
+      name: 'DeepSeek Chat',
       provider: 'OpenRouter',
       providerId: 'openrouter',
     },
 
     {
-      id: 'meta-llama/llama-3.3-70b-instruct:free',
-      name: 'Llama 3.3 70B Free',
-      provider: 'OpenRouter',
-      providerId: 'openrouter',
-    },
-
-    {
-      id: 'google/gemma-3-27b-it:free',
-      name: 'Gemma 3 27B Free',
-      provider: 'OpenRouter',
-      providerId: 'openrouter',
-    },
-
-    {
-      id: 'microsoft/phi-4-reasoning-plus:free',
-      name: 'Phi 4 Reasoning',
+      id: 'deepseek/deepseek-r1',
+      name: 'DeepSeek R1',
       provider: 'OpenRouter',
       providerId: 'openrouter',
     },
@@ -137,32 +172,19 @@ async function fetchOpenRouterModels(): Promise<Model[]> {
       provider: 'OpenRouter',
       providerId: 'openrouter',
     },
-  ]
-}
 
-async function fetchGoogleModels(): Promise<Model[]> {
-  if (!isProviderEnabled('google')) return []
-
-  return [
     {
-      id: 'gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro',
-      provider: 'Google',
-      providerId: 'google',
+      id: 'mistralai/mistral-large',
+      name: 'Mistral Large',
+      provider: 'OpenRouter',
+      providerId: 'openrouter',
     },
 
     {
-      id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash',
-      provider: 'Google',
-      providerId: 'google',
-    },
-
-    {
-      id: 'gemini-2.0-flash',
-      name: 'Gemini 2.0 Flash',
-      provider: 'Google',
-      providerId: 'google',
+      id: 'google/gemma-3-27b-it:free',
+      name: 'Gemma 3 27B',
+      provider: 'OpenRouter',
+      providerId: 'openrouter',
     },
   ]
 }
@@ -213,7 +235,7 @@ async function fetchTogetherModels(): Promise<Model[]> {
   return [
     {
       id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
-      name: 'Llama 3.3 70B Turbo',
+      name: 'Llama 3.3 Turbo',
       provider: 'Together',
       providerId: 'together',
     },
@@ -227,7 +249,7 @@ async function fetchTogetherModels(): Promise<Model[]> {
 
     {
       id: 'Qwen/Qwen2.5-72B-Instruct-Turbo',
-      name: 'Qwen 2.5 72B Turbo',
+      name: 'Qwen 2.5 Turbo',
       provider: 'Together',
       providerId: 'together',
     },
@@ -248,58 +270,72 @@ async function fetchTogetherModels(): Promise<Model[]> {
   ]
 }
 
+async function fetchNvidiaModels(): Promise<Model[]> {
+  if (!isProviderEnabled('nvidia')) return []
+
+  return [
+    {
+      id: 'meta/llama-3.1-70b-instruct',
+      name: 'Llama 3.1 70B',
+      provider: 'NVIDIA',
+      providerId: 'nvidia',
+    },
+
+    {
+      id: 'google/gemma-2-27b-it',
+      name: 'Gemma 2 27B',
+      provider: 'NVIDIA',
+      providerId: 'nvidia',
+    },
+
+    {
+      id: 'microsoft/phi-3-medium-128k-instruct',
+      name: 'Phi 3 Medium',
+      provider: 'NVIDIA',
+      providerId: 'nvidia',
+    },
+  ]
+}
+
 export async function fetchAvailableModels(): Promise<
   Record<string, Model[]>
 > {
   const [
     groq,
-    openrouter,
     google,
+    openrouter,
     openai,
     anthropic,
     together,
+    nvidia,
   ] = await Promise.all([
     fetchGroqModels(),
-    fetchOpenRouterModels(),
     fetchGoogleModels(),
+    fetchOpenRouterModels(),
     fetchOpenAIModels(),
     fetchAnthropicModels(),
     fetchTogetherModels(),
+    fetchNvidiaModels(),
   ])
 
   const allModels: Model[] = [
     ...groq,
-    ...openrouter,
     ...google,
+    ...openrouter,
     ...openai,
     ...anthropic,
     ...together,
+    ...nvidia,
   ]
-
-  /**
-   * REMOVE DUPLICATES
-   */
-
-  const uniqueModels = allModels.filter(
-    (model, index, self) =>
-      index ===
-      self.findIndex(
-        m =>
-          m.id === model.id &&
-          m.providerId === model.providerId
-      )
-  )
 
   const grouped: Record<string, Model[]> = {}
 
-  uniqueModels.forEach(model => {
-    const provider = model.provider
-
-    if (!grouped[provider]) {
-      grouped[provider] = []
+  allModels.forEach(model => {
+    if (!grouped[model.provider]) {
+      grouped[model.provider] = []
     }
 
-    grouped[provider].push(model)
+    grouped[model.provider].push(model)
   })
 
   return grouped
