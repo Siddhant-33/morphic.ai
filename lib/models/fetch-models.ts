@@ -16,20 +16,23 @@ async function fetchGroqModels(): Promise<Model[]> {
 async function fetchNvidiaModels(): Promise<Model[]> {
   if (!isProviderEnabled('nvidia')) return []
   return [
-    { id: "minimax/minimax-m2.7", name: "MiniMax M2.7 (Best Overall)", provider: "NVIDIA", providerId: "nvidia" },
-    { id: "deepseek-ai/deepseek-v4-flash", name: "DeepSeek V4 Flash", provider: "NVIDIA", providerId: "nvidia" },
+    { id: "minimax/minimax-m2.7", name: "MiniMax M2.7 (NVIDIA Best)", provider: "NVIDIA", providerId: "nvidia" },
+    { id: "deepseek-ai/deepseek-v4-flash", name: "DeepSeek V4 Flash (Fast Coding)", provider: "NVIDIA", providerId: "nvidia" },
     { id: "deepseek-ai/deepseek-v4", name: "DeepSeek V4", provider: "NVIDIA", providerId: "nvidia" },
-    { id: "gpt-oss/gpt-oss-120b", name: "GPT-OSS 120B", provider: "NVIDIA", providerId: "nvidia" },
-    { id: "glm/glm-5.1", name: "GLM-5.1", provider: "NVIDIA", providerId: "nvidia" },
-    { id: "kimi/kimi-k2.5", name: "Kimi K2.5", provider: "NVIDIA", providerId: "nvidia" },
+    { id: "gpt-oss/gpt-oss-120b", name: "GPT-OSS 120B (NVIDIA)", provider: "NVIDIA", providerId: "nvidia" },
+    { id: "glm/glm-5.1", name: "GLM-5.1 (Strong Agentic)", provider: "NVIDIA", providerId: "nvidia" },
+    { id: "kimi/kimi-k2.5", name: "Kimi K2.5 (Multimodal)", provider: "NVIDIA", providerId: "nvidia" },
   ]
 }
 
 async function fetchOpenRouterModels(): Promise<Model[]> {
   if (!isProviderEnabled('openrouter')) return []
   return [
-    { id: "openrouter/free", name: "OpenRouter Free Router (Random Best)", provider: "OpenRouter", providerId: "openrouter" },
-    { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Free)", provider: "OpenRouter", providerId: "openrouter" },
+    { id: "openrouter/auto", name: "OpenRouter Auto (Best Free)", provider: "OpenRouter", providerId: "openrouter" },
+    { id: "deepseek/deepseek-v4-flash:free", name: "DeepSeek V4 Flash Free", provider: "OpenRouter", providerId: "openrouter" },
+    { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nemotron 3 Super (Free)", provider: "OpenRouter", providerId: "openrouter" },
+    { id: "meta-llama/llama-4-scout:free", name: "Llama 4 Scout Free", provider: "OpenRouter", providerId: "openrouter" },
+    { id: "qwen/qwen2.5-72b-instruct:free", name: "Qwen2.5 72B Free", provider: "OpenRouter", providerId: "openrouter" },
   ]
 }
 
@@ -45,22 +48,23 @@ export async function fetchAvailableModels(): Promise<Record<string, Model[]>> {
     ...nvidia,
     ...openrouter,
 
-    // Gemini Models (More Added)
+    // === GEMINI - Best & Latest Models ===
     { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview (Most Powerful)", provider: "Google", providerId: "google" },
     { id: "gemini-3.1-flash", name: "Gemini 3.1 Flash", provider: "Google", providerId: "google" },
     { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite", provider: "Google", providerId: "google" },
     { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "Google", providerId: "google" },
     { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "Google", providerId: "google" },
-    
+    { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "Google", providerId: "google" },
+    { id: "gemini-2.0-pro", name: "Gemini 2.0 Pro", provider: "Google", providerId: "google" },
+
     { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", providerId: "openai" },
   ]
 
-  // Group by provider
   const grouped: Record<string, Model[]> = {}
   allModels.forEach(model => {
-    const provider = model.provider
-    if (!grouped[provider]) grouped[provider] = []
-    grouped[provider].push(model)
+    const p = model.provider
+    if (!grouped[p]) grouped[p] = []
+    grouped[p].push(model)
   })
 
   return grouped
