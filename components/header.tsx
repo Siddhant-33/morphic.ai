@@ -7,7 +7,7 @@ import { useSidebar } from '@/components/ui/sidebar'
 import { Button } from './ui/button'
 import GuestMenu from './guest-menu'
 import UserMenu from './user-menu'
-import SearchModeSelector from './search-mode-selector'   // ← New Mode Selector
+import SearchModeSelector from './search-mode-selector'
 
 interface HeaderProps {
   user: User | null
@@ -26,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
         'w-full'
       )}
     >
-      {/* Left Side - Mode Selector */}
+      {/* Left Side - Clean Mode Selector */}
       <div className="flex items-center">
         <SearchModeSelector />
       </div>
