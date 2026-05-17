@@ -1,11 +1,11 @@
 {
-  "version": 4,
+  "version": 5,
   "models": {
     "quick": {
-      "id": "gemini-3.1-flash",
-      "name": "Speed Mode",
-      "provider": "Google",
-      "providerId": "google"
+      "id": "llama-3.1-8b-instant",
+      "name": "Speed Insight",
+      "provider": "Groq",
+      "providerId": "groq"
     },
     "adaptive": {
       "id": "gemini-3.1-pro-preview",
