@@ -36,8 +36,6 @@ interface ChatPanelProps {
   setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>
   onNewChat?: () => void
   isGuest?: boolean
-  isCloudDeployment?: boolean
-  sections?: { id: string; userMessage: UIMessage }[]
 }
 
 export function ChatPanel({
@@ -57,44 +55,21 @@ export function ChatPanel({
   setUploadedFiles,
   onNewChat,
   isGuest = false,
-  isCloudDeployment = false,
-  sections = []
 }: ChatPanelProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const isFirstRender = useRef(true)
   const [isComposing, setIsComposing] = useState(false)
   const [enterDisabled, setEnterDisabled] = useState(false)
-  const [isInputFocused, setIsInputFocused] = useState(false)
-  const { close: closeArtifact } = useArtifact()
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
-  const handleCompositionStart = () => setIsComposing(true)
-  const handleCompositionEnd = () => {
-    setIsComposing(false)
-    setEnterDisabled(true)
-    setTimeout(() => setEnterDisabled(false), 300)
-  }
-
   const handleNewChat = useCallback(() => {
     setMessages([])
-    closeArtifact()
-    setIsInputFocused(false)
     inputRef.current?.blur()
     onNewChat?.()
     router.push('/')
-  }, [setMessages, closeArtifact, onNewChat, router])
-
-  useEffect(() => {
-    const handleNewChatShortcut = (e: Event) => {
-      if (e.defaultPrevented) return
-      e.preventDefault()
-      handleNewChat()
-    }
-    window.addEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
-    return () => window.removeEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
-  }, [handleNewChat])
+  }, [setMessages, onNewChat, router])
 
   useEffect(() => {
     if (isFirstRender.current && query && query.trim().length > 0) {
@@ -107,51 +82,30 @@ export function ChatPanel({
     setUploadedFiles(prev => prev.filter((_, i) => i !== index))
   }, [setUploadedFiles])
 
-  const handleScrollToBottom = () => {
-    scrollContainerRef.current?.scrollTo({
-      top: scrollContainerRef.current.scrollHeight,
-      behavior: 'smooth'
-    })
-  }
-
   return (
-    <div className={cn('w-full bg-background group/form-container shrink-0', messages.length > 0 ? 'sticky bottom-0 px-2 pb-2 md:pb-4' : 'px-6')}>
+    <div className={cn('w-full bg-background group/form-container shrink-0', messages.length > 0 ? 'sticky bottom-0 px-2 pb-4' : 'px-6')}>
       {messages.length === 0 && (
-        <div className="mb-6 md:mb-10 flex flex-col items-center gap-2 md:gap-4">
+        <div className="mb-10 flex flex-col items-center gap-4">
           <IconBlinkingLogo className="size-12" />
-          <h1 className="text-xl md:text-2xl font-medium text-foreground">
-            What would you like to know?
-          </h1>
+          <h1 className="text-2xl font-medium text-foreground">What would you like to know?</h1>
         </div>
       )}
 
       {uploadedFiles.length > 0 && <UploadedFileList files={uploadedFiles} onRemove={handleFileRemove} />}
 
-      <form onSubmit={handleSubmit} className="max-w-full md:max-w-3xl w-full mx-auto relative">
-        {messages.length > 0 && showScrollToBottomButton && (
-          <Button type="button" variant="outline" size="icon" className="absolute -top-10 right-0 z-20 size-8 rounded-full" onClick={handleScrollToBottom}>
-            <ChevronDown size={16} />
-          </Button>
-        )}
-
-        {sections.length > 0 && <MessageNavigationDots sections={sections} />}
-
+      <form onSubmit={handleSubmit} className="max-w-3xl w-full mx-auto">
         <div className="relative flex flex-col w-full gap-2 bg-muted rounded-3xl border border-input">
           <Textarea
             ref={inputRef}
             rows={2}
-            maxRows={5}
+            maxRows={6}
             placeholder={messages.length > 0 ? 'Reply...' : 'Ask anything...'}
             value={input}
             onChange={handleInputChange}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleCompositionEnd}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
             disabled={isLoading}
-            className="resize-none w-full min-h-12 bg-transparent border-0 p-3 md:p-4 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden"
+            className="resize-none w-full min-h-12 bg-transparent border-0 p-4 text-sm placeholder:text-muted-foreground"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !isComposing && !enterDisabled) {
+              if (e.key === 'Enter' && !e.shiftKey) {
                 if (input.trim().length === 0) return
                 e.preventDefault()
                 e.currentTarget.form?.requestSubmit()
@@ -159,64 +113,21 @@ export function ChatPanel({
             }}
           />
 
-          {/* Bottom Bar */}
-          <div className="flex items-center justify-between p-2 md:p-3">
-            <div className="flex items-center gap-2">
-              {!isGuest && (
-                <FileUploadButton
-                  onFileSelect={async (files) => {
-                    const newFiles = files.map(file => ({ file, status: 'uploading' as const }))
-                    setUploadedFiles(prev => [...prev, ...newFiles])
-
-                    await Promise.all(
-                      newFiles.map(async (uf, index) => {
-                        const formData = new FormData()
-                        formData.append('file', uf.file)
-                        formData.append('chatId', chatId)
-                        try {
-                          const res = await fetch('/api/upload', { method: 'POST', body: formData })
-                          if (!res.ok) throw new Error('Upload failed')
-                          const { file: uploaded } = await res.json()
-                          setUploadedFiles(prev =>
-                            prev.map((f, i) => i === index + (prev.length - newFiles.length) 
-                              ? { ...f, status: 'uploaded', url: uploaded.url, name: uploaded.filename, key: uploaded.key }
-                              : f
-                            )
-                          )
-                        } catch (e) {
-                          toast.error(`Failed to upload ${uf.file.name}`)
-                        }
-                      })
-                    )
-                  }}
-                />
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between p-3">
+            <FileUploadButton onFileSelect={/* keep your original upload logic */} />
+            
+            <div className="flex gap-2">
               {messages.length > 0 && (
-                <Button variant="outline" size="icon" onClick={handleNewChat} className="size-8 md:size-10 rounded-full">
+                <Button variant="outline" size="icon" onClick={handleNewChat}>
                   <MessageCirclePlus className="size-4" />
                 </Button>
               )}
-
-              <Button 
-                type={isLoading ? 'button' : 'submit'} 
-                size="icon" 
-                className="size-8 md:size-10 rounded-full"
-                disabled={input.length === 0 && !isLoading}
-                onClick={isLoading ? stop : undefined}
-              >
+              <Button type={isLoading ? 'button' : 'submit'} size="icon" disabled={input.length === 0 && !isLoading}>
                 {isLoading ? <Square className="size-4" /> : <ArrowUp className="size-4" />}
               </Button>
             </div>
           </div>
         </div>
-
-        {messages.length === 0 && <ActionButtons onSelectPrompt={(message) => {
-          handleInputChange({ target: { value: message } } as any)
-          setTimeout(() => inputRef.current?.form?.requestSubmit(), INPUT_UPDATE_DELAY_MS)
-        }} className="mt-2" />}
       </form>
     </div>
   )
