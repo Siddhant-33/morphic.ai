@@ -86,7 +86,6 @@ export function ChatPanel({
     router.push('/')
   }, [setMessages, closeArtifact, onNewChat, router])
 
-  // Keyboard shortcut
   useEffect(() => {
     const handleNewChatShortcut = (e: Event) => {
       if (e.defaultPrevented) return
@@ -97,7 +96,6 @@ export function ChatPanel({
     return () => window.removeEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
   }, [handleNewChat])
 
-  // Auto submit query
   useEffect(() => {
     if (isFirstRender.current && query && query.trim().length > 0) {
       append({ role: 'user', content: query })
@@ -161,10 +159,38 @@ export function ChatPanel({
             }}
           />
 
-          {/* Bottom Bar - Only File Upload + Send Button */}
+          {/* Bottom Bar */}
           <div className="flex items-center justify-between p-2 md:p-3">
             <div className="flex items-center gap-2">
-              {!isGuest && <FileUploadButton onFileSelect={/* your existing logic */} />}
+              {!isGuest && (
+                <FileUploadButton
+                  onFileSelect={async (files) => {
+                    const newFiles = files.map(file => ({ file, status: 'uploading' as const }))
+                    setUploadedFiles(prev => [...prev, ...newFiles])
+
+                    await Promise.all(
+                      newFiles.map(async (uf, index) => {
+                        const formData = new FormData()
+                        formData.append('file', uf.file)
+                        formData.append('chatId', chatId)
+                        try {
+                          const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                          if (!res.ok) throw new Error('Upload failed')
+                          const { file: uploaded } = await res.json()
+                          setUploadedFiles(prev =>
+                            prev.map((f, i) => i === index + (prev.length - newFiles.length) 
+                              ? { ...f, status: 'uploaded', url: uploaded.url, name: uploaded.filename, key: uploaded.key }
+                              : f
+                            )
+                          )
+                        } catch (e) {
+                          toast.error(`Failed to upload ${uf.file.name}`)
+                        }
+                      })
+                    )
+                  }}
+                />
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -174,14 +200,23 @@ export function ChatPanel({
                 </Button>
               )}
 
-              <Button type={isLoading ? 'button' : 'submit'} size="icon" className="size-8 md:size-10 rounded-full" disabled={input.length === 0 && !isLoading} onClick={isLoading ? stop : undefined}>
+              <Button 
+                type={isLoading ? 'button' : 'submit'} 
+                size="icon" 
+                className="size-8 md:size-10 rounded-full"
+                disabled={input.length === 0 && !isLoading}
+                onClick={isLoading ? stop : undefined}
+              >
                 {isLoading ? <Square className="size-4" /> : <ArrowUp className="size-4" />}
               </Button>
             </div>
           </div>
         </div>
 
-        {messages.length === 0 && <ActionButtons onSelectPrompt={/* your logic */} className="mt-2" />}
+        {messages.length === 0 && <ActionButtons onSelectPrompt={(message) => {
+          handleInputChange({ target: { value: message } } as any)
+          setTimeout(() => inputRef.current?.form?.requestSubmit(), INPUT_UPDATE_DELAY_MS)
+        }} className="mt-2" />}
       </form>
     </div>
   )
