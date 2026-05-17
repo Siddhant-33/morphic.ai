@@ -1,5 +1,4 @@
 'use client'
-
 import React from 'react'
 import { usePathname } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
@@ -8,6 +7,7 @@ import { useSidebar } from '@/components/ui/sidebar'
 import { Button } from './ui/button'
 import GuestMenu from './guest-menu'
 import UserMenu from './user-menu'
+import SearchModeSelector from './search-mode-selector'   // ← New Mode Selector
 
 interface HeaderProps {
   user: User | null
@@ -26,17 +26,19 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
         'w-full'
       )}
     >
-      {/* Left side - empty for now */}
-      <div></div>
+      {/* Left Side - Mode Selector */}
+      <div className="flex items-center">
+        <SearchModeSelector />
+      </div>
 
-      {/* Center - "Made by" credit */}
-      <div className="absolute left-1/2 transform -translate-x-1/2">
+      {/* Center - Credit */}
+      <div className="absolute left-1/2 transform -translate-x-1/2 hidden md:block">
         <span className="text-sm text-muted-foreground font-medium">
           Made by Siddhant Ray ❤
         </span>
       </div>
 
-      {/* Right side - Feedback + User menu */}
+      {/* Right Side */}
       <div className="flex items-center gap-2">
         {isRootPage && (
           <Button variant="outline" size="sm" asChild>
