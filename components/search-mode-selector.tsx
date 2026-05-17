@@ -11,7 +11,7 @@ const modes = [
 ];
 
 export default function SearchModeSelector() {
-  const [searchMode, setSearchMode] = React.useState('quick');
+  const [searchMode, setSearchMode] = React.useState<'quick' | 'adaptive' | 'analyzing' | 'image'>('quick');
 
   return (
     <div className="flex items-center gap-1 bg-zinc-900/90 border border-zinc-700 rounded-2xl p-1 shadow-lg">
@@ -22,7 +22,7 @@ export default function SearchModeSelector() {
         return (
           <button
             key={mode.id}
-            onClick={() => setSearchMode(mode.id)}
+            onClick={() => setSearchMode(mode.id as any)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${
               isActive 
                 ? 'bg-white text-black shadow-md' 
