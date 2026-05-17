@@ -13,24 +13,16 @@ import {
   QUICK_MODE_PROMPT
 } from './prompts/search-mode-prompts'
 
-// Enhanced wrapper function with better type safety
-function wrapSearchToolForQuickMode<
-  T extends ReturnType<typeof createSearchTool>
->(originalTool: T): T {
+// Quick mode wrapper
+function wrapSearchToolForQuickMode<T extends ReturnType<typeof createSearchTool>>(originalTool: T): T {
   return tool({
     description: originalTool.description,
     inputSchema: originalTool.inputSchema,
     async *execute(params, context) {
       const executeFunc = originalTool.execute
-      if (!executeFunc) {
-        throw new Error('Search tool execute function is not defined')
-      }
+      if (!executeFunc) throw new Error('Search tool execute function is not defined')
 
-      const modifiedParams = {
-        ...params,
-        type: 'optimized' as const
-      }
-
+      const modifiedParams = { ...params, type: 'optimized' as const }
       const result = executeFunc(modifiedParams, context)
 
       if (result && typeof result === 'object' && Symbol.asyncIterator in result) {
@@ -39,13 +31,7 @@ function wrapSearchToolForQuickMode<
         }
       } else {
         const finalResult = await result
-        yield finalResult || {
-          state: 'complete' as const,
-          results: [],
-          images: [],
-          query: params.query,
-          number_of_results: 0
-        }
+        yield finalResult || { state: 'complete' as const, results: [], images: [], query: params.query, number_of_results: 0 }
       }
     }
   }) as T
@@ -74,10 +60,8 @@ export function createResearcher({
     let maxSteps: number
     let searchTool = originalSearchTool
 
-    // Configure based on search mode
     switch (searchMode) {
       case 'quick':
-        console.log('[Researcher] Quick mode: maxSteps=20')
         systemPrompt = QUICK_MODE_PROMPT
         activeToolsList = ['search', 'fetch']
         maxSteps = 20
@@ -86,11 +70,9 @@ export function createResearcher({
 
       case 'adaptive':
       default:
-        console.log('[Researcher] Adaptive mode: maxSteps=50')
         systemPrompt = getAdaptiveModePrompt()
         activeToolsList = ['search', 'fetch', 'todoWrite']
         maxSteps = 50
-        searchTool = originalSearchTool
         break
     }
 
@@ -101,8 +83,7 @@ export function createResearcher({
       ...todoTools
     } as ResearcherTools
 
-    // ✅ Fixed: Safe handling of providerOptions
-    const agentConfig: any = {
+    const agent = new ToolLoopAgent({
       model: getModel(model),
       instructions: `${systemPrompt}\nCurrent date and time: ${currentDate}`,
       tools,
@@ -115,20 +96,10 @@ export function createResearcher({
           modelId: model,
           agentType: 'researcher',
           searchMode,
-          ...(parentTraceId && {
-            langfuseTraceId: parentTraceId,
-            langfuseUpdateParent: false
-          })
+          ...(parentTraceId && { langfuseTraceId: parentTraceId, langfuseUpdateParent: false })
         }
       }
-    }
-
-    // Safely add providerOptions if it exists
-    if (modelConfig?.providerOptions) {
-      agentConfig.providerOptions = modelConfig.providerOptions
-    }
-
-    const agent = new ToolLoopAgent(agentConfig)
+    })
 
     return agent
   } catch (error) {
@@ -137,12 +108,8 @@ export function createResearcher({
   }
 }
 
-// Helper function
-export function getResearcherTools(
-  agent: ToolLoopAgent<never, ResearcherTools, never>
-): ResearcherTools {
+export function getResearcherTools(agent: ToolLoopAgent<never, ResearcherTools, never>): ResearcherTools {
   return agent.tools
 }
 
-// Export the legacy function name for backward compatibility
 export const researcher = createResearcher
