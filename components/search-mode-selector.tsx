@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Zap, Brain, Search, ImageIcon } from 'lucide-react';
-import { useSearchStore } from '@/lib/store/search-store'; // If this doesn't exist, we'll fix it below
 
 const modes = [
   { id: 'quick', label: 'Speed Insight', icon: Zap },
@@ -12,7 +11,7 @@ const modes = [
 ];
 
 export default function SearchModeSelector() {
-  const { searchMode, setSearchMode } = useSearchStore();
+  const [searchMode, setSearchMode] = React.useState('quick');
 
   return (
     <div className="flex items-center gap-1 bg-zinc-900/90 border border-zinc-700 rounded-2xl p-1 shadow-lg">
@@ -23,8 +22,8 @@ export default function SearchModeSelector() {
         return (
           <button
             key={mode.id}
-            onClick={() => setSearchMode(mode.id as any)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+            onClick={() => setSearchMode(mode.id)}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${
               isActive 
                 ? 'bg-white text-black shadow-md' 
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
