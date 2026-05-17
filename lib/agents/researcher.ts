@@ -1,8 +1,6 @@
 import { stepCountIs, tool, ToolLoopAgent } from 'ai'
-
 import type { ResearcherTools } from '@/lib/types/agent'
 import { type Model } from '@/lib/types/models'
-
 import { fetchTool } from '../tools/fetch'
 import { createQuestionTool } from '../tools/question'
 import { createSearchTool } from '../tools/search'
@@ -10,13 +8,12 @@ import { createTodoTools } from '../tools/todo'
 import { SearchMode } from '../types/search'
 import { getModel } from '../utils/registry'
 import { isTracingEnabled } from '../utils/telemetry'
-
 import {
   getAdaptiveModePrompt,
   QUICK_MODE_PROMPT
 } from './prompts/search-mode-prompts'
 
-// Enhanced wrapper function with better type safety and streaming support
+// Enhanced wrapper function with better type safety
 function wrapSearchToolForQuickMode<
   T extends ReturnType<typeof createSearchTool>
 >(originalTool: T): T {
@@ -29,26 +26,18 @@ function wrapSearchToolForQuickMode<
         throw new Error('Search tool execute function is not defined')
       }
 
-      // Force optimized type for quick mode
       const modifiedParams = {
         ...params,
         type: 'optimized' as const
       }
 
-      // Execute the original tool and pass through all yielded values
       const result = executeFunc(modifiedParams, context)
 
-      // Handle AsyncIterable (streaming) case
-      if (
-        result &&
-        typeof result === 'object' &&
-        Symbol.asyncIterator in result
-      ) {
+      if (result && typeof result === 'object' && Symbol.asyncIterator in result) {
         for await (const chunk of result) {
           yield chunk
         }
       } else {
-        // Fallback for non-streaming (shouldn't happen with new implementation)
         const finalResult = await result
         yield finalResult || {
           state: 'complete' as const,
@@ -62,8 +51,6 @@ function wrapSearchToolForQuickMode<
   }) as T
 }
 
-// Enhanced researcher function with improved type safety using ToolLoopAgent
-// Note: abortSignal should be passed to agent.stream() or agent.generate() calls, not to the agent constructor
 export function createResearcher({
   model,
   modelConfig,
@@ -78,7 +65,6 @@ export function createResearcher({
   try {
     const currentDate = new Date().toLocaleString()
 
-    // Create model-specific tools with proper typing
     const originalSearchTool = createSearchTool(model)
     const askQuestionTool = createQuestionTool(model)
     const todoTools = createTodoTools()
@@ -91,9 +77,7 @@ export function createResearcher({
     // Configure based on search mode
     switch (searchMode) {
       case 'quick':
-        console.log(
-          '[Researcher] Quick mode: maxSteps=20, tools=[search, fetch]'
-        )
+        console.log('[Researcher] Quick mode: maxSteps=20')
         systemPrompt = QUICK_MODE_PROMPT
         activeToolsList = ['search', 'fetch']
         maxSteps = 20
@@ -102,17 +86,14 @@ export function createResearcher({
 
       case 'adaptive':
       default:
+        console.log('[Researcher] Adaptive mode: maxSteps=50')
         systemPrompt = getAdaptiveModePrompt()
         activeToolsList = ['search', 'fetch', 'todoWrite']
-        console.log(
-          `[Researcher] Adaptive mode: maxSteps=50, tools=[${activeToolsList.join(', ')}]`
-        )
         maxSteps = 50
         searchTool = originalSearchTool
         break
     }
 
-    // Build tools object with proper typing
     const tools: ResearcherTools = {
       search: searchTool,
       fetch: fetchTool,
@@ -120,16 +101,13 @@ export function createResearcher({
       ...todoTools
     } as ResearcherTools
 
-    // Create ToolLoopAgent with all configuration
-    const agent = new ToolLoopAgent({
+    // ✅ Fixed: Safe handling of providerOptions
+    const agentConfig: any = {
       model: getModel(model),
       instructions: `${systemPrompt}\nCurrent date and time: ${currentDate}`,
       tools,
       activeTools: activeToolsList,
       stopWhen: stepCountIs(maxSteps),
-      ...(modelConfig?.providerOptions && {
-        providerOptions: modelConfig.providerOptions
-      }),
       experimental_telemetry: {
         isEnabled: isTracingEnabled(),
         functionId: 'research-agent',
@@ -143,7 +121,14 @@ export function createResearcher({
           })
         }
       }
-    })
+    }
+
+    // Safely add providerOptions if it exists
+    if (modelConfig?.providerOptions) {
+      agentConfig.providerOptions = modelConfig.providerOptions
+    }
+
+    const agent = new ToolLoopAgent(agentConfig)
 
     return agent
   } catch (error) {
@@ -152,7 +137,7 @@ export function createResearcher({
   }
 }
 
-// Helper function to access agent tools
+// Helper function
 export function getResearcherTools(
   agent: ToolLoopAgent<never, ResearcherTools, never>
 ): ResearcherTools {
