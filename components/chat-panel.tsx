@@ -21,7 +21,7 @@ import { ActionButtons } from './action-buttons'
 import { FileUploadButton } from './file-upload-button'
 import { MessageNavigationDots } from './message-navigation-dots'
 import { ModelSelectorClient } from './model-selector-client'
-import { SearchModeSelector } from './search-mode-selector'
+import SearchModeSelector from './search-mode-selector'
 import { UploadedFileList } from './uploaded-file-list'
 
 // Constants for timing delays
