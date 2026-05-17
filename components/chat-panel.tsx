@@ -64,12 +64,29 @@ export function ChatPanel({
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
+  const handleCompositionStart = () => setIsComposing(true)
+  const handleCompositionEnd = () => {
+    setIsComposing(false)
+    setEnterDisabled(true)
+    setTimeout(() => setEnterDisabled(false), 300)
+  }
+
   const handleNewChat = useCallback(() => {
     setMessages([])
     inputRef.current?.blur()
     onNewChat?.()
     router.push('/')
   }, [setMessages, onNewChat, router])
+
+  useEffect(() => {
+    const handleNewChatShortcut = (e: Event) => {
+      if (e.defaultPrevented) return
+      e.preventDefault()
+      handleNewChat()
+    }
+    window.addEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
+    return () => window.removeEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
+  }, [handleNewChat])
 
   useEffect(() => {
     if (isFirstRender.current && query && query.trim().length > 0) {
@@ -81,6 +98,13 @@ export function ChatPanel({
   const handleFileRemove = useCallback((index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index))
   }, [setUploadedFiles])
+
+  const handleScrollToBottom = () => {
+    scrollContainerRef.current?.scrollTo({
+      top: scrollContainerRef.current.scrollHeight,
+      behavior: 'smooth'
+    })
+  }
 
   return (
     <div className={cn('w-full bg-background group/form-container shrink-0', messages.length > 0 ? 'sticky bottom-0 px-2 pb-4' : 'px-6')}>
@@ -94,6 +118,14 @@ export function ChatPanel({
       {uploadedFiles.length > 0 && <UploadedFileList files={uploadedFiles} onRemove={handleFileRemove} />}
 
       <form onSubmit={handleSubmit} className="max-w-3xl w-full mx-auto">
+        {messages.length > 0 && showScrollToBottomButton && (
+          <Button type="button" variant="outline" size="icon" className="absolute -top-10 right-0 z-20 size-8 rounded-full" onClick={handleScrollToBottom}>
+            <ChevronDown size={16} />
+          </Button>
+        )}
+
+        {messages.length > 0 && <MessageNavigationDots sections={[]} />}
+
         <div className="relative flex flex-col w-full gap-2 bg-muted rounded-3xl border border-input">
           <Textarea
             ref={inputRef}
@@ -102,10 +134,12 @@ export function ChatPanel({
             placeholder={messages.length > 0 ? 'Reply...' : 'Ask anything...'}
             value={input}
             onChange={handleInputChange}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             disabled={isLoading}
             className="resize-none w-full min-h-12 bg-transparent border-0 p-4 text-sm placeholder:text-muted-foreground"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !isComposing && !enterDisabled) {
                 if (input.trim().length === 0) return
                 e.preventDefault()
                 e.currentTarget.form?.requestSubmit()
@@ -114,15 +148,24 @@ export function ChatPanel({
           />
 
           <div className="flex items-center justify-between p-3">
-            <FileUploadButton onFileSelect={/* keep your original upload logic */} />
-            
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {!isGuest && <FileUploadButton onFileSelect={async () => {}} />}
+            </div>
+
+            <div className="flex items-center gap-2">
               {messages.length > 0 && (
-                <Button variant="outline" size="icon" onClick={handleNewChat}>
+                <Button variant="outline" size="icon" onClick={handleNewChat} className="size-9 rounded-full">
                   <MessageCirclePlus className="size-4" />
                 </Button>
               )}
-              <Button type={isLoading ? 'button' : 'submit'} size="icon" disabled={input.length === 0 && !isLoading}>
+
+              <Button 
+                type={isLoading ? 'button' : 'submit'} 
+                size="icon" 
+                className="size-9 rounded-full"
+                disabled={input.length === 0 && !isLoading}
+                onClick={isLoading ? stop : undefined}
+              >
                 {isLoading ? <Square className="size-4" /> : <ArrowUp className="size-4" />}
               </Button>
             </div>
