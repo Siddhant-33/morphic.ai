@@ -1,162 +1,162 @@
-import { revalidateTag } from 'next/cache'
-import { cookies } from 'next/headers'
-import { loadChat } from '@/lib/actions/chat'
-import { calculateConversationTurn, trackChatEvent } from '@/lib/analytics'
-import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import { checkAndEnforceOverallChatLimit } from '@/lib/rate-limit/chat-limits'
-import { checkAndEnforceGuestLimit } from '@/lib/rate-limit/guest-limit'
-import { createChatStreamResponse } from '@/lib/streaming/create-chat-stream-response'
-import { createEphemeralChatStreamResponse } from '@/lib/streaming/create-ephemeral-chat-stream-response'
+import { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies'
+
+import { DEFAULT_MODEL } from '@/lib/config/default-model'
+import { isCloudDeployment } from '@/lib/config/load-models-config'
+import {
+  MODEL_SELECTION_COOKIE,
+  parseModelSelectionCookie
+} from '@/lib/config/model-selection-cookie'
+import { getModelForMode } from '@/lib/config/model-types'
+import { fetchAvailableModels } from '@/lib/models/fetch-models'
+import { Model } from '@/lib/types/models'
 import { SearchMode } from '@/lib/types/search'
-import { selectModel } from '@/lib/utils/model-selection'
-import { perfLog, perfTime } from '@/lib/utils/perf-logging'
-import { resetAllCounters } from '@/lib/utils/perf-tracking'
 import { isProviderEnabled } from '@/lib/utils/registry'
 
-export const maxDuration = 300
+const MODE_FALLBACK_ORDER: SearchMode[] = ['quick', 'adaptive']
 
-export async function POST(req: Request) {
-  const startTime = performance.now()
-  const abortSignal = req.signal
+const PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google'
+}
 
-  if (process.env.ENABLE_PERF_LOGGING === 'true') {
-    resetAllCounters()
+function buildProviderOptions(
+  providerId: string,
+  _modelId: string
+): Model['providerOptions'] | undefined {
+  return undefined
+}
+
+function pickFirstFetchedModel(
+  modelsByProvider: Record<string, Model[]>
+): Model | null {
+  const providers = Object.keys(modelsByProvider).sort((a, b) =>
+    a.localeCompare(b)
+  )
+
+  for (const provider of providers) {
+    const firstModel = modelsByProvider[provider]?.[0]
+
+    if (firstModel) {
+      return firstModel
+    }
   }
 
-  try {
-    const body = await req.json()
-    const {
-      message,
-      messages,
-      chatId,
-      trigger,
-      messageId,
-      isNewChat
-    } = body
+  return null
+}
 
-    const referer = req.headers.get('referer')
-    const isSharePage = referer?.includes('/share/')
+interface ModelSelectionParams {
+  searchMode?: SearchMode
+  cookieStore?: ReadonlyRequestCookies
+  taskType?: 'chat' | 'image' | 'research'
+}
 
-    const userId = await getCurrentUserId()
+function buildLocalCookieModel(
+  providerId: string,
+  modelId: string
+): Model {
+  const providerOptions = buildProviderOptions(providerId, modelId)
 
-    if (isSharePage) {
-      return new Response('Chat API is not available on share pages', { status: 403 })
-    }
-
-    const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
-    const isGuest = !userId
-
-    if (isGuest && !guestChatEnabled) {
-      return new Response('Authentication required', { status: 401 })
-    }
-
-    if (isGuest) {
-      const forwardedFor = req.headers.get('x-forwarded-for') || ''
-      const ip = forwardedFor.split(',')[0]?.trim() || req.headers.get('x-real-ip') || null
-      const guestLimitResponse = await checkAndEnforceGuestLimit(ip)
-      if (guestLimitResponse) return guestLimitResponse
-    }
-
-    const cookieStore = await cookies()
-
-    const searchModeCookie = cookieStore.get('searchMode')?.value
-    const searchMode: SearchMode = 
-      searchModeCookie && ['quick', 'adaptive', 'research', 'image'].includes(searchModeCookie)
-        ? (searchModeCookie as SearchMode)
-        : 'quick'
-
-    let taskType: 'chat' | 'image' | 'research' = 'chat'
-    if (searchMode === 'image') taskType = 'image'
-    if (searchMode === 'research') taskType = 'research'
-
-    const selectedModel: any = await selectModel({
-      searchMode,
-      cookieStore,
-      taskType
-    })
-
-    if (!selectedModel) {
-      return new Response('No enabled model is available', {
-        status: 503,
-        statusText: 'Service Unavailable'
-      })
-    }
-
-    // ✅ FINAL FIX - Complete Model Object
-    const modelForAPI = {
-      id: selectedModel.id,
-      name: selectedModel.name || selectedModel.id || 'Unknown Model',
-      provider: selectedModel.provider || selectedModel.providerId || 'unknown',
-      providerId: selectedModel.providerId,
-    }
-
-    if (!isProviderEnabled(selectedModel.providerId)) {
-      return new Response(`Selected provider is not enabled`, { status: 404 })
-    }
-
-    if (!isGuest && userId) {
-      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId)
-      if (overallLimitResponse) return overallLimitResponse
-    }
-
-    const response = isGuest
-      ? await createEphemeralChatStreamResponse({
-          messages: Array.isArray(messages) ? messages : [],
-          model: modelForAPI,
-          abortSignal,
-          searchMode,
-          chatId
-        })
-      : await createChatStreamResponse({
-          message,
-          model: modelForAPI,
-          chatId,
-          userId: userId!,
-          trigger,
-          messageId,
-          abortSignal,
-          isNewChat,
-          searchMode
-        })
-
-    // Background analytics
-    ;(async () => {
-      try {
-        let conversationTurn = 1
-        if (!isNewChat && !isGuest && userId) {
-          const chat = await loadChat(chatId, userId)
-          if (chat?.messages) {
-            conversationTurn = calculateConversationTurn(chat.messages) + 1
-          }
-        }
-        if (!isGuest && userId) {
-          await trackChatEvent({
-            searchMode,
-            conversationTurn,
-            isNewChat: isNewChat ?? false,
-            trigger: (trigger as any) ?? 'submit-message',
-            chatId,
-            userId,
-            providerId: selectedModel.providerId,
-            modelId: selectedModel.id
-          })
-        }
-      } catch (error) {
-        console.error('Analytics tracking failed:', error)
-      }
-    })()
-
-    if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`)
-    }
-
-    return response
-
-  } catch (error) {
-    console.error('API route error:', error)
-    return new Response('Error processing your request', {
-      status: 500,
-      statusText: 'Internal Server Error'
-    })
+  return {
+    id: modelId,
+    name: modelId,
+    provider: PROVIDER_LABELS[providerId] ?? providerId,
+    providerId,
+    ...(providerOptions ? { providerOptions } : {})
   }
 }
+
+function resolveModelForMode(mode: SearchMode): Model | undefined {
+  try {
+    const model = getModelForMode(mode)
+
+    if (!model) {
+      return undefined
+    }
+
+    if (!isProviderEnabled(model.providerId)) {
+      console.warn(
+        `[ModelSelection] Provider "${model.providerId}" is not enabled for mode "${mode}"`
+      )
+
+      return undefined
+    }
+
+    return model
+  } catch (error) {
+    console.error(
+      `[ModelSelection] Failed to load model configuration for mode "${mode}":`,
+      error
+    )
+
+    return undefined
+  }
+}
+
+export async function selectModel({
+  searchMode,
+  cookieStore,
+  taskType = 'chat'
+}: ModelSelectionParams): Promise<Model | null> {
+  /*
+    FORCE GEMINI ONLY
+  */
+
+  const GEMINI_CHAT_MODEL: Model = {
+    id: 'gemini-2.5-flash-lite',
+    name: 'Gemini 2.5 Flash Lite',
+    provider: 'Google',
+    providerId: 'google'
+  }
+
+  const GEMINI_ADAPTIVE_MODEL: Model = {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    provider: 'Google',
+    providerId: 'google'
+  }
+
+  const GEMINI_RESEARCH_MODEL: Model = {
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    provider: 'Google',
+    providerId: 'google'
+  }
+
+  const GEMINI_IMAGE_MODEL: Model = {
+    id: 'gemini-2.5-flash-image',
+    name: 'Gemini Image Generation',
+    provider: 'Google',
+    providerId: 'google'
+  }
+
+  /*
+    IMAGE GENERATION
+  */
+
+  if (taskType === 'image') {
+    return GEMINI_IMAGE_MODEL
+  }
+
+  /*
+    DEEP RESEARCH
+  */
+
+  if (taskType === 'research') {
+    return GEMINI_RESEARCH_MODEL
+  }
+
+  /*
+    ADAPTIVE SEARCH
+  */
+
+  if (searchMode === 'adaptive') {
+    return GEMINI_ADAPTIVE_MODEL
+  }
+
+  /*
+    NORMAL CHAT
+  */
+
+  return GEMINI_CHAT_MODEL
+}
+
+export { DEFAULT_MODEL }
