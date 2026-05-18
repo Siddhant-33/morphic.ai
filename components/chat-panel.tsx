@@ -1,420 +1,247 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useRef, useState, useTransition, useCallback } from 'react'
 import Textarea from 'react-textarea-autosize'
-import { useRouter } from 'next/navigation'
-
-import { UseChatHelpers } from '@ai-sdk/react'
-import { ArrowUp, ChevronDown, MessageCirclePlus, Square } from 'lucide-react'
-import { toast } from 'sonner'
-
-import { SHORTCUT_EVENTS } from '@/lib/keyboard-shortcuts'
-import { UploadedFile } from '@/lib/types'
-import type { UIDataTypes, UIMessage, UITools } from '@/lib/types/ai'
-import type { ModelSelectorData } from '@/lib/types/model-selector'
+import { Button } from '@/components/ui/button'
+import { ArrowUp, Search, Brain, Sparkles, Microscope } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useEnterSubmit } from '@/lib/hooks/use-enter-submit'
+import { useRouter } from 'next/navigation'
+import { createStreamableUI, createStreamableValue } from 'ai/rsc'
 
-import { useArtifact } from './artifact/artifact-context'
-import { Button } from './ui/button'
-import { IconBlinkingLogo } from './ui/icons'
-import { ActionButtons } from './action-buttons'
-import { FileUploadButton } from './file-upload-button'
-import { MessageNavigationDots } from './message-navigation-dots'
-import { ModelSelectorClient } from './model-selector-client'
-import { SearchModeSelector } from './search-mode-selector'
-import { UploadedFileList } from './uploaded-file-list'
+// ── Mode type ────────────────────────────────────────────────────────────────
+export type ChatMode = 'search' | 'adaptive' | 'image' | 'deep-research'
 
-// Constants for timing delays
-const INPUT_UPDATE_DELAY_MS = 10 // Delay to ensure input value is updated before form submission
+// Auto model routing – NEVER shown to the user, picked in background
+export const MODE_MODELS: Record<ChatMode, { speed: string; quality: string; provider: string }> = {
+  search: {
+    speed:   'llama-3.1-8b-instant',
+    quality: 'llama-3.3-70b-versatile',
+    provider: 'groq',
+  },
+  adaptive: {
+    speed:   'gemini-2.5-flash',
+    quality: 'gemini-2.5-pro',
+    provider: 'google',
+  },
+  image: {
+    speed:   'dall-e-2',
+    quality: 'dall-e-3',
+    provider: 'openai',
+  },
+  'deep-research': {
+    speed:   'deepseek-r1-distill-llama-70b',
+    quality: 'deepseek-ai/deepseek-v4-pro',
+    provider: 'groq',
+  },
+}
 
+const MODES: { id: ChatMode; label: string; Icon: React.FC<{ size?: number; className?: string }> ; placeholder: string }[] = [
+  {
+    id: 'search',
+    label: 'Search',
+    Icon: ({ size = 14, className }) => <Search size={size} className={className} />,
+    placeholder: 'Ask anything...',
+  },
+  {
+    id: 'adaptive',
+    label: 'Adaptive',
+    Icon: ({ size = 14, className }) => <Brain size={size} className={className} />,
+    placeholder: 'Ask anything complex...',
+  },
+  {
+    id: 'image',
+    label: 'Image',
+    Icon: ({ size = 14, className }) => <Sparkles size={size} className={className} />,
+    placeholder: 'Describe the image you want to generate...',
+  },
+  {
+    id: 'deep-research',
+    label: 'Deep Research',
+    Icon: ({ size = 14, className }) => <Microscope size={size} className={className} />,
+    placeholder: 'What topic do you want deeply researched?',
+  },
+]
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 interface ChatPanelProps {
-  chatId: string
-  input: string
-  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
-  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void
-  status: UseChatHelpers<UIMessage<unknown, UIDataTypes, UITools>>['status']
-  messages: UIMessage[]
-  setMessages: (messages: UIMessage[]) => void
-  query?: string
+  id?: string
+  isLoading: boolean
   stop: () => void
-  append: (message: any) => void
-  /** Whether to show the scroll to bottom button */
-  showScrollToBottomButton: boolean
-  /** Reference to the scroll container */
-  scrollContainerRef: React.RefObject<HTMLDivElement>
-  uploadedFiles: UploadedFile[]
-  setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>
-  /** Callback to reset chatId when starting a new chat */
-  onNewChat?: () => void
-  /** Whether the current session is guest */
-  isGuest?: boolean
-  /** Whether the deployment is cloud mode */
-  isCloudDeployment?: boolean
-  modelSelectorData?: ModelSelectorData
-  /** Chat sections for message navigation dots */
-  sections?: { id: string; userMessage: UIMessage }[]
+  append: (message: { role: string; content: string; mode?: ChatMode; autoModel?: string }) => void
+  reload: () => void
+  messages: any[]
+  input: string
+  setInput: (value: string) => void
 }
 
 export function ChatPanel({
-  chatId,
-  input,
-  handleInputChange,
-  handleSubmit,
-  status,
-  messages,
-  setMessages,
-  query,
+  id,
+  isLoading,
   stop,
   append,
-  showScrollToBottomButton,
-  uploadedFiles,
-  setUploadedFiles,
-  scrollContainerRef,
-  onNewChat,
-  isGuest = false,
-  isCloudDeployment = false,
-  modelSelectorData,
-  sections = []
+  reload,
+  messages,
+  input,
+  setInput,
 }: ChatPanelProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const isFirstRender = useRef(true)
-  const [isComposing, setIsComposing] = useState(false) // Composition state
-  const [enterDisabled, setEnterDisabled] = useState(false) // Disable Enter after composition ends
-  const [isInputFocused, setIsInputFocused] = useState(false) // Track input focus
-  const { close: closeArtifact } = useArtifact()
-  const isLoading = status === 'submitted' || status === 'streaming'
-  const hasAvailableModels =
-    isCloudDeployment || modelSelectorData?.hasAvailableModels !== false
+  const { onKeyDown } = useEnterSubmit()
 
-  const handleCompositionStart = () => setIsComposing(true)
+  const [mode, setMode] = useState<ChatMode>('search')
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
 
-  const handleCompositionEnd = () => {
-    setIsComposing(false)
-    setEnterDisabled(true)
-    setTimeout(() => {
-      setEnterDisabled(false)
-    }, 300)
-  }
+  // ── Pick model automatically based on message complexity ──────────────────
+  const pickAutoModel = useCallback(
+    (text: string): { modelId: string; provider: string } => {
+      const isComplex =
+        text.length > 200 ||
+        /\b(explain|analyze|compare|research|write|code|debug|summarize|translate|detailed|comprehensive)\b/i.test(text)
 
-  const handleNewChat = useCallback(() => {
-    setMessages([])
-    closeArtifact()
-    // Reset focus state when clearing chat
-    setIsInputFocused(false)
-    inputRef.current?.blur()
-    // Reset chatId in parent component
-    onNewChat?.()
-    router.push('/')
-  }, [setMessages, closeArtifact, onNewChat, router])
-
-  // Listen for keyboard shortcut events
-  // Uses defaultPrevented to prevent duplicate handling
-  // when multiple ChatPanel instances are mounted (Next.js component caching)
-  const handleNewChatRef = useRef(handleNewChat)
-  useEffect(() => {
-    handleNewChatRef.current = handleNewChat
-  }, [handleNewChat])
-
-  useEffect(() => {
-    const handleNewChatShortcut = (e: Event) => {
-      if (e.defaultPrevented) return
-      e.preventDefault()
-      handleNewChatRef.current()
-    }
-
-    window.addEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
-    return () => {
-      window.removeEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
-    }
-  }, [])
-
-  const isToolInvocationInProgress = () => {
-    if (!messages.length) return false
-
-    const lastMessage = messages[messages.length - 1]
-    if (lastMessage.role !== 'assistant' || !lastMessage.parts) return false
-
-    const parts = lastMessage.parts
-    const lastPart = parts[parts.length - 1]
-
-    return (
-      (lastPart?.type === 'tool-search' ||
-        lastPart?.type === 'tool-fetch' ||
-        lastPart?.type === 'tool-askQuestion') &&
-      ((lastPart as any)?.state === 'input-streaming' ||
-        (lastPart as any)?.state === 'input-available')
-    )
-  }
-
-  // if query is not empty, submit the query
-  useEffect(() => {
-    if (isFirstRender.current && query && query.trim().length > 0) {
-      append({
-        role: 'user',
-        content: query
-      })
-      isFirstRender.current = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query])
-
-  const handleFileRemove = useCallback(
-    (index: number) => {
-      setUploadedFiles(prev => prev.filter((_, i) => i !== index))
+      const cfg = MODE_MODELS[mode]
+      return {
+        modelId:  isComplex ? cfg.quality : cfg.speed,
+        provider: cfg.provider,
+      }
     },
-    [setUploadedFiles]
+    [mode]
   )
-  // Scroll to the bottom of the container
-  const handleScrollToBottom = () => {
-    const scrollContainer = scrollContainerRef.current
-    if (scrollContainer) {
-      scrollContainer.scrollTo({
-        top: scrollContainer.scrollHeight,
-        behavior: 'smooth'
+
+  // ── Submit handler ────────────────────────────────────────────────────────
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const text = input.trim()
+    setInput('')
+
+    if (mode === 'image') {
+      // Route to image generation endpoint
+      startTransition(async () => {
+        try {
+          const res = await fetch('/api/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: text, quality: 'hd' }),
+          })
+          const data = await res.json()
+          if (data.url) setImagePreview(data.url)
+          // Still append to chat so the conversation is tracked
+          append({ role: 'user', content: text, mode, autoModel: 'dall-e-3' })
+        } catch (err) {
+          console.error('Image generation failed:', err)
+        }
       })
+      return
     }
+
+    const { modelId, provider } = pickAutoModel(text)
+    append({ role: 'user', content: text, mode, autoModel: `${provider}:${modelId}` })
   }
+
+  const currentMode = MODES.find(m => m.id === mode)!
 
   return (
-    <div
-      className={cn(
-        'w-full bg-background group/form-container shrink-0',
-        messages.length > 0 ? 'sticky bottom-0 px-2 pb-2 md:pb-4' : 'px-6'
-      )}
-    >
-      {messages.length === 0 && (
-        <div className="mb-6 md:mb-10 flex flex-col items-center gap-2 md:gap-4">
-          <IconBlinkingLogo className="size-12" />
-          <h1 className="text-xl md:text-2xl font-medium text-foreground">
-            What would you like to know?
-          </h1>
+    <div className="fixed inset-x-0 bottom-0 w-full">
+      {/* Generated image preview (image mode only) */}
+      {imagePreview && mode === 'image' && (
+        <div className="mx-auto mb-4 max-w-2xl px-4">
+          <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur">
+            <img src={imagePreview} alt="Generated" className="w-full h-auto rounded-2xl" />
+            <button
+              onClick={() => setImagePreview(null)}
+              className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white/70 hover:text-white text-xs px-2"
+            >
+              ✕ close
+            </button>
+          </div>
         </div>
       )}
-      {uploadedFiles.length > 0 && (
-        <UploadedFileList files={uploadedFiles} onRemove={handleFileRemove} />
-      )}
-      <form
-        onSubmit={e => {
-          if (!hasAvailableModels) {
-            e.preventDefault()
-            toast.error('No enabled model is available')
-            return
-          }
-          handleSubmit(e)
-          // Reset focus state after submission
-          setIsInputFocused(false)
-          inputRef.current?.blur()
-        }}
-        className={cn('max-w-full md:max-w-3xl w-full mx-auto relative')}
-      >
-        {/* Scroll to bottom button */}
-        {messages.length > 0 && (
-          <div
-            className={cn(
-              'transition-opacity duration-100',
-              showScrollToBottomButton
-                ? 'opacity-100'
-                : 'pointer-events-none opacity-0'
-            )}
-          >
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="absolute -top-10 right-0 z-20 size-8 rounded-full shadow-md"
-              onClick={handleScrollToBottom}
-              title="Scroll to bottom"
-            >
-              <ChevronDown size={16} />
-            </Button>
-          </div>
-        )}
-        {/* Message navigation dots */}
-        {sections.length > 0 && (
-          <div
-            className={cn(
-              'transition-opacity duration-100',
-              !showScrollToBottomButton && status === 'ready'
-                ? 'opacity-100'
-                : 'pointer-events-none opacity-0'
-            )}
-          >
-            <MessageNavigationDots sections={sections} />
-          </div>
-        )}
 
-        <div
-          className={cn(
-            'relative flex flex-col w-full gap-2 bg-muted rounded-3xl border border-input transition-shadow',
-            isInputFocused &&
-              'ring-1 ring-ring/20 ring-offset-1 ring-offset-background/50'
-          )}
-        >
-          <Textarea
-            ref={inputRef}
-            name="input"
-            rows={2}
-            maxRows={5}
-            tabIndex={0}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleCompositionEnd}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
-            placeholder={messages.length > 0 ? 'Reply...' : 'Ask anything...'}
-            spellCheck={false}
-            value={input}
-            disabled={isLoading || isToolInvocationInProgress()}
-            className="resize-none w-full min-h-12 bg-transparent border-0 p-3 md:p-4 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-            onChange={handleInputChange}
-            onKeyDown={e => {
-              if (
-                e.key === 'Enter' &&
-                !e.shiftKey &&
-                !isComposing &&
-                !enterDisabled
-              ) {
-                if (input.trim().length === 0) {
-                  e.preventDefault()
-                  return
-                }
-                e.preventDefault()
-                const textarea = e.target as HTMLTextAreaElement
-                textarea.form?.requestSubmit()
-                // Reset focus state after Enter key submission
-                setIsInputFocused(false)
-                textarea.blur()
-              }
-            }}
-          />
-
-          {/* Bottom menu area */}
-          <div className="flex items-center justify-between p-2 md:p-3">
-            <div className="flex items-center gap-2">
-              {!isGuest && (
-                <FileUploadButton
-                  onFileSelect={async files => {
-                    const newFiles: UploadedFile[] = files.map(file => ({
-                      file,
-                      status: 'uploading'
-                    }))
-                    setUploadedFiles(prev => [...prev, ...newFiles])
-                    await Promise.all(
-                      newFiles.map(async uf => {
-                        const formData = new FormData()
-                        formData.append('file', uf.file)
-                        formData.append('chatId', chatId)
-                        try {
-                          const res = await fetch('/api/upload', {
-                            method: 'POST',
-                            body: formData
-                          })
-
-                          if (!res.ok) {
-                            throw new Error('Upload failed')
-                          }
-
-                          const { file: uploaded } = await res.json()
-                          setUploadedFiles(prev =>
-                            prev.map(f =>
-                              f.file === uf.file
-                                ? {
-                                    ...f,
-                                    status: 'uploaded',
-                                    url: uploaded.url,
-                                    name: uploaded.filename,
-                                    key: uploaded.key
-                                  }
-                                : f
-                            )
-                          )
-                        } catch (e) {
-                          toast.error(`Failed to upload ${uf.file.name}`)
-                          setUploadedFiles(prev =>
-                            prev.map(f =>
-                              f.file === uf.file ? { ...f, status: 'error' } : f
-                            )
-                          )
-                        }
-                      })
-                    )
-                  }}
-                />
+      <div className="mx-auto max-w-2xl px-4 pb-4 sm:pb-6">
+        <form onSubmit={handleSubmit}>
+          <div className="relative rounded-2xl border border-white/10 bg-[#111111] shadow-xl shadow-black/30">
+            {/* Textarea */}
+            <Textarea
+              ref={inputRef}
+              name="message"
+              placeholder={currentMode.placeholder}
+              className={cn(
+                'w-full resize-none bg-transparent px-4 pt-4 pb-2 text-sm text-white/90',
+                'placeholder:text-white/30 outline-none ring-0 border-0 focus:ring-0 focus:border-0',
+                'max-h-52 min-h-[52px] leading-relaxed',
               )}
-              <SearchModeSelector />
-            </div>
-            <div className="flex items-center gap-2">
-              {!isCloudDeployment && modelSelectorData && (
-                <ModelSelectorClient data={modelSelectorData} />
-              )}
-              {messages.length > 0 && (
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={1}
+              autoFocus
+            />
+
+            {/* Bottom action bar */}
+            <div className="flex items-center justify-between gap-2 px-2 pb-2">
+              {/* Mode buttons */}
+              <div className="flex items-center gap-0.5">
+                {MODES.map((m, i) => (
+                  <React.Fragment key={m.id}>
+                    {/* Visual divider before new modes */}
+                    {i === 2 && (
+                      <div className="mx-1.5 h-4 w-px bg-white/10" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setMode(m.id)}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 select-none',
+                        mode === m.id
+                          ? 'bg-white/10 text-white'
+                          : 'text-white/40 hover:bg-white/5 hover:text-white/70'
+                      )}
+                    >
+                      <m.Icon size={13} />
+                      <span>{m.label}</span>
+                      {(m.id === 'image' || m.id === 'deep-research') && (
+                        <span className="rounded px-1 py-px text-[9px] font-semibold bg-white/10 text-white/50 leading-none">
+                          NEW
+                        </span>
+                      )}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+
+              {/* Send / Stop button */}
+              {isLoading ? (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  onClick={handleNewChat}
-                  className="shrink-0 size-8 md:size-10 rounded-full group"
-                  type="button"
-                  disabled={isLoading}
+                  onClick={stop}
+                  className="h-8 w-8 shrink-0 rounded-full bg-white/10 hover:bg-white/20 text-white"
                 >
-                  <MessageCirclePlus className="size-4 group-hover:rotate-12 transition-all" />
+                  <span className="h-3 w-3 rounded-sm bg-white" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!input.trim() || isPending}
+                  className={cn(
+                    'h-8 w-8 shrink-0 rounded-full transition-all',
+                    input.trim()
+                      ? 'bg-white text-black hover:bg-white/90'
+                      : 'bg-white/10 text-white/20 cursor-not-allowed'
+                  )}
+                >
+                  <ArrowUp size={16} />
                 </Button>
               )}
-              <Button
-                type={isLoading ? 'button' : 'submit'}
-                size={'icon'}
-                className={cn(
-                  isLoading && 'animate-pulse',
-                  'size-8 md:size-10 rounded-full'
-                )}
-                disabled={
-                  (input.length === 0 && !isLoading) || !hasAvailableModels
-                }
-                onClick={isLoading ? stop : undefined}
-                title={
-                  hasAvailableModels
-                    ? undefined
-                    : 'No enabled model is available'
-                }
-              >
-                {isLoading ? (
-                  <Square className="size-4 md:size-5" />
-                ) : (
-                  <ArrowUp className="size-4 md:size-5" />
-                )}
-              </Button>
             </div>
           </div>
-        </div>
-
-        {/* Action buttons for prompt suggestions */}
-        {messages.length === 0 && (
-          <ActionButtons
-            onSelectPrompt={message => {
-              // Set the input value and submit
-              handleInputChange({
-                target: { value: message }
-              } as React.ChangeEvent<HTMLTextAreaElement>)
-              // Submit the form after a small delay to ensure the input is updated
-              setTimeout(() => {
-                inputRef.current?.form?.requestSubmit()
-                // Reset focus state after action button submission
-                setIsInputFocused(false)
-                inputRef.current?.blur()
-              }, INPUT_UPDATE_DELAY_MS)
-            }}
-            onCategoryClick={category => {
-              // Set the category in the input
-              handleInputChange({
-                target: { value: category }
-              } as React.ChangeEvent<HTMLTextAreaElement>)
-              // Focus the input
-              inputRef.current?.focus()
-            }}
-            inputRef={inputRef}
-            className="mt-2"
-          />
-        )}
-      </form>
+        </form>
+      </div>
     </div>
   )
 }
