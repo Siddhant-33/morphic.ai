@@ -82,10 +82,10 @@ export async function POST(req: Request) {
       })
     }
 
-    // FIXED: Complete Model object
+    // ✅ FINAL FIX - Complete Model Object
     const modelForAPI = {
       id: selectedModel.id,
-      name: selectedModel.name || selectedModel.id,
+      name: selectedModel.name || selectedModel.id || 'Unknown Model',
       provider: selectedModel.provider || selectedModel.providerId || 'unknown',
       providerId: selectedModel.providerId,
     }
@@ -94,8 +94,8 @@ export async function POST(req: Request) {
       return new Response(`Selected provider is not enabled`, { status: 404 })
     }
 
-    if (!isGuest) {
-      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId!)
+    if (!isGuest && userId) {
+      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId)
       if (overallLimitResponse) return overallLimitResponse
     }
 
@@ -123,8 +123,8 @@ export async function POST(req: Request) {
     ;(async () => {
       try {
         let conversationTurn = 1
-        if (!isNewChat && !isGuest) {
-          const chat = await loadChat(chatId, userId!)
+        if (!isNewChat && !isGuest && userId) {
+          const chat = await loadChat(chatId, userId)
           if (chat?.messages) {
             conversationTurn = calculateConversationTurn(chat.messages) + 1
           }
