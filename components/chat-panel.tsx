@@ -86,8 +86,8 @@ export function ChatPanel({
   const [isInputFocused, setIsInputFocused] = useState(false)
 
   const [activeMode, setActiveMode] = useState<
-    'chat' | 'image' | 'research'
-  >('chat')
+    'image' | 'research' | null
+  >(null)
 
   const { close: closeArtifact } = useArtifact()
 
@@ -302,7 +302,6 @@ export function ChatPanel({
               ) {
                 if (input.trim().length === 0) {
                   e.preventDefault()
-
                   return
                 }
 
@@ -379,72 +378,46 @@ export function ChatPanel({
                 />
               )}
 
-              <SearchModeSelector />
+              <div className="flex items-center gap-1">
+                <SearchModeSelector />
 
-              <div className="flex items-center gap-1 bg-background/60 border border-border rounded-full p-1">
                 <button
                   type="button"
+                  onClick={() => setActiveMode('research')}
                   className={cn(
-                    'size-8 rounded-full flex items-center justify-center transition',
-                    activeMode === 'chat'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
+                    'h-8 px-3 rounded-full border text-xs font-medium transition-all duration-200',
+                    activeMode === 'research'
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-background hover:bg-muted border-border text-muted-foreground hover:text-foreground'
                   )}
-                  onClick={() => setActiveMode('chat')}
                 >
-                  <IconBlinkingLogo className="size-4" />
+                  Deep Research
                 </button>
 
                 <button
                   type="button"
-                  className={cn(
-                    'size-8 rounded-full flex items-center justify-center transition',
-                    activeMode === 'image'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  )}
                   onClick={() => setActiveMode('image')}
+                  className={cn(
+                    'h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-200',
+                    activeMode === 'image'
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-background hover:bg-muted border-border text-muted-foreground hover:text-foreground'
+                  )}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
+                    width="15"
+                    height="15"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
                     <rect x="3" y="3" width="18" height="18" rx="2" />
                     <circle cx="9" cy="9" r="2" />
                     <path d="m21 15-3.5-3.5L5 21" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  className={cn(
-                    'size-8 rounded-full flex items-center justify-center transition',
-                    activeMode === 'research'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  )}
-                  onClick={() => setActiveMode('research')}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M12 2v4" />
-                    <path d="M12 18v4" />
-                    <path d="M4.93 4.93l2.83 2.83" />
-                    <path d="M16.24 16.24l2.83 2.83" />
-                    <path d="M2 12h4" />
-                    <path d="M18 12h4" />
                   </svg>
                 </button>
               </div>
