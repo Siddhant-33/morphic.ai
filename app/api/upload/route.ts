@@ -1,36 +1,12 @@
-import { put } from '@vercel/blob'
 import { NextResponse } from 'next/server'
 
-export async function POST(req: Request) {
-  try {
-    const formData = await req.formData()
-
-    const file = formData.get('file') as File
-
-    if (!file) {
-      return NextResponse.json(
-        { error: 'No file uploaded' },
-        { status: 400 }
-      )
+export async function POST() {
+  return NextResponse.json(
+    {
+      error: 'File upload is disabled'
+    },
+    {
+      status: 200
     }
-
-    const blob = await put(file.name, file, {
-      access: 'public'
-    })
-
-    return NextResponse.json({
-      file: {
-        url: blob.url,
-        filename: file.name,
-        key: blob.pathname
-      }
-    })
-  } catch (error) {
-    console.error(error)
-
-    return NextResponse.json(
-      { error: 'Upload failed' },
-      { status: 500 }
-    )
-  }
+  )
 }
