@@ -25,7 +25,7 @@ import { IconBlinkingLogo } from './ui/icons'
 import { ActionButtons } from './action-buttons'
 import { FileUploadButton } from './file-upload-button'
 import { MessageNavigationDots } from './message-navigation-dots'
-import { SearchModeSelector } from './search-mode-selector'
+import SearchModeSelector from './search-mode-selector'
 import { UploadedFileList } from './uploaded-file-list'
 
 const INPUT_UPDATE_DELAY_MS = 10
@@ -74,11 +74,15 @@ export function ChatPanel({
   sections = []
 }: ChatPanelProps) {
   const router = useRouter()
+
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
   const isFirstRender = useRef(true)
 
   const [isComposing, setIsComposing] = useState(false)
+
   const [enterDisabled, setEnterDisabled] = useState(false)
+
   const [isInputFocused, setIsInputFocused] = useState(false)
 
   const [activeMode, setActiveMode] = useState<
@@ -96,6 +100,7 @@ export function ChatPanel({
 
   const handleCompositionEnd = () => {
     setIsComposing(false)
+
     setEnterDisabled(true)
 
     setTimeout(() => {
@@ -105,6 +110,7 @@ export function ChatPanel({
 
   const handleNewChat = useCallback(() => {
     setMessages([])
+
     closeArtifact()
 
     setIsInputFocused(false)
@@ -149,6 +155,7 @@ export function ChatPanel({
     if (lastMessage.role !== 'assistant' || !lastMessage.parts) return false
 
     const parts = lastMessage.parts
+
     const lastPart = parts[parts.length - 1]
 
     return (
@@ -329,6 +336,7 @@ export function ChatPanel({
                         const formData = new FormData()
 
                         formData.append('file', uf.file)
+
                         formData.append('chatId', chatId)
 
                         try {
