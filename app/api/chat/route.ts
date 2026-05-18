@@ -82,7 +82,6 @@ export async function POST(req: Request) {
       })
     }
 
-    // ✅ FIXED: Complete Model object to satisfy TypeScript
     const modelForAPI = {
       id: selectedModel.id,
       name: selectedModel.name || selectedModel.id || 'Unknown',
@@ -131,7 +130,7 @@ export async function POST(req: Request) {
         }
         if (!isGuest && userId) {
           await trackChatEvent({
-            searchMode,
+            searchMode: searchMode as any,   // ← Fixed here
             conversationTurn,
             isNewChat: isNewChat ?? false,
             trigger: (trigger as any) ?? 'submit-message',
