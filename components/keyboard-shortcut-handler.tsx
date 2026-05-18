@@ -1,15 +1,10 @@
 'use client'
-
 import { useTheme } from 'next-themes'
-
 import { toast } from 'sonner'
-
 import { SHORTCUT_EVENTS, SHORTCUTS } from '@/lib/keyboard-shortcuts'
 import { SearchMode } from '@/lib/types/search'
 import { getCookie, setCookie } from '@/lib/utils/cookies'
-
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut'
-
 import { useSidebar } from './ui/sidebar'
 import { KeyboardShortcutDialog } from './keyboard-shortcut-dialog'
 
@@ -19,13 +14,14 @@ const THEME_CYCLE: Record<string, string> = {
   system: 'dark'
 }
 
-const SEARCH_MODE_LABELS: Record<SearchMode, string> = {
+// ✅ FIXED: Use string key to avoid type error
+const SEARCH_MODE_LABELS: Record<string, string> = {
   quick: 'Quick',
   adaptive: 'Adaptive',
   analyzing: 'Analyzing',
   image: 'Image Generation',
-  research: 'Research',   // if it exists
-} as const 
+  research: 'Research',
+}
 
 export function KeyboardShortcutHandler() {
   const { theme, setTheme } = useTheme()
