@@ -1,26 +1,30 @@
 import { SearchMode } from '@/lib/types/search'
 import { Model } from '@/lib/types/models'
-import { getModelsConfig } from './models-config'
+
+// Simple hardcoded config (no external import)
+const modelsConfig = {
+  models: {
+    quick: {
+      id: "gemini-2.5-pro",
+      name: "Speed Insight",
+      provider: "Google",
+      providerId: "google"
+    },
+    adaptive: {
+      id: "gemini-2.5-flash-lite",
+      name: "Deep Research",
+      provider: "Google",
+      providerId: "google"
+    }
+  }
+}
 
 export function getModelForMode(mode: SearchMode): Model | undefined {
-  const cfg = getModelsConfig()
-
-  // Support all modes
   if (mode === 'quick') {
-    return cfg.models?.quick
+    return modelsConfig.models.quick
   }
-  if (mode === 'adaptive' || mode === 'analyzing') {
-    return cfg.models?.adaptive
-  }
-  if (mode === 'image') {
-    return cfg.models?.quick // or any default model for image
-  }
-  if (mode === 'research') {
-    return cfg.models?.adaptive
-  }
-
-  // Fallback
-  return cfg.models?.quick
+  // All other modes (adaptive, analyzing, image, etc.) use Gemini Pro
+  return modelsConfig.models.adaptive
 }
 
 export function getDefaultModel(mode: SearchMode = 'quick'): Model {
