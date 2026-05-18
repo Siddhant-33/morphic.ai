@@ -1,6 +1,5 @@
 import { revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
-
 import { loadChat } from '@/lib/actions/chat'
 import { calculateConversationTurn, trackChatEvent } from '@/lib/analytics'
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
@@ -26,7 +25,6 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-
     const {
       message,
       messages,
@@ -36,115 +34,40 @@ export async function POST(req: Request) {
       isNewChat
     } = body
 
-    perfLog(
-      `API Route - Start: chatId=${chatId}, trigger=${trigger}, isNewChat=${isNewChat}`
-    )
-
-    if (trigger === 'regenerate-message') {
-      if (!messageId) {
-        return new Response(
-          'messageId is required for regeneration',
-          {
-            status: 400,
-            statusText: 'Bad Request'
-          }
-        )
-      }
-    } else if (trigger === 'submit-message') {
-      if (!message) {
-        return new Response(
-          'message is required for submission',
-          {
-            status: 400,
-            statusText: 'Bad Request'
-          }
-        )
-      }
-    }
-
     const referer = req.headers.get('referer')
-
     const isSharePage = referer?.includes('/share/')
-
-    const authStart = performance.now()
 
     const userId = await getCurrentUserId()
 
-    perfTime('Auth completed', authStart)
-
     if (isSharePage) {
-      return new Response(
-        'Chat API is not available on share pages',
-        {
-          status: 403,
-          statusText: 'Forbidden'
-        }
-      )
+      return new Response('Chat API is not available on share pages', { status: 403 })
     }
 
-    const guestChatEnabled =
-      process.env.ENABLE_GUEST_CHAT === 'true'
-
+    const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
     const isGuest = !userId
 
     if (isGuest && !guestChatEnabled) {
-      return new Response('Authentication required', {
-        status: 401,
-        statusText: 'Unauthorized'
-      })
+      return new Response('Authentication required', { status: 401 })
     }
 
     if (isGuest) {
-      const forwardedFor =
-        req.headers.get('x-forwarded-for') || ''
-
-      const ip =
-        forwardedFor.split(',')[0]?.trim() ||
-        req.headers.get('x-real-ip') ||
-        null
-
-      const guestLimitResponse =
-        await checkAndEnforceGuestLimit(ip)
-
-      if (guestLimitResponse) {
-        return guestLimitResponse
-      }
+      const forwardedFor = req.headers.get('x-forwarded-for') || ''
+      const ip = forwardedFor.split(',')[0]?.trim() || req.headers.get('x-real-ip') || null
+      const guestLimitResponse = await checkAndEnforceGuestLimit(ip)
+      if (guestLimitResponse) return guestLimitResponse
     }
 
     const cookieStore = await cookies()
 
-    /*
-      SEARCH MODE
-    */
-
-    const searchModeCookie =
-      cookieStore.get('searchMode')?.value
-
-    const searchMode: SearchMode =
-      searchModeCookie &&
-      ['quick', 'adaptive', 'research', 'image'].includes(
-        searchModeCookie
-      )
+    const searchModeCookie = cookieStore.get('searchMode')?.value
+    const searchMode: SearchMode = 
+      searchModeCookie && ['quick', 'adaptive', 'research', 'image'].includes(searchModeCookie)
         ? (searchModeCookie as SearchMode)
         : 'quick'
 
-    /*
-      TASK TYPE
-    */
-
     let taskType: 'chat' | 'image' | 'research' = 'chat'
-
-    if (searchMode === 'image') {
-      taskType = 'image'
-    }
-
-    if (searchMode === 'research') {
-      taskType = 'research'
-    }
-
-    /*
-      MODEL SELECTION
-    */
+    if (searchMode === 'image') taskType = 'image'
+    if (searchMode === 'research') taskType = 'research'
 
     const selectedModel: any = await selectModel({
       searchMode,
@@ -153,55 +76,42 @@ export async function POST(req: Request) {
     })
 
     if (!selectedModel) {
-      return new Response(
-        'No enabled model is available',
-        {
-          status: 503,
-          statusText: 'Service Unavailable'
-        }
-      )
+      return new Response('No enabled model is available', {
+        status: 503,
+        statusText: 'Service Unavailable'
+      })
+    }
+
+    // FIXED: Complete Model object
+    const modelForAPI = {
+      id: selectedModel.id,
+      name: selectedModel.name || selectedModel.id,
+      provider: selectedModel.provider || selectedModel.providerId || 'unknown',
+      providerId: selectedModel.providerId,
     }
 
     if (!isProviderEnabled(selectedModel.providerId)) {
-      return new Response(
-        `Selected provider is not enabled ${selectedModel.providerId}`,
-        {
-          status: 404,
-          statusText: 'Not Found'
-        }
-      )
+      return new Response(`Selected provider is not enabled`, { status: 404 })
     }
 
     if (!isGuest) {
-      const overallLimitResponse =
-        await checkAndEnforceOverallChatLimit(userId)
-
-      if (overallLimitResponse) {
-        return overallLimitResponse
-      }
+      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId!)
+      if (overallLimitResponse) return overallLimitResponse
     }
-
-    const streamStart = performance.now()
-
-    perfLog(
-      `createChatStreamResponse - Start: model=${selectedModel.providerId}:${selectedModel.id}, searchMode=${searchMode}`
-    )
 
     const response = isGuest
       ? await createEphemeralChatStreamResponse({
-          messages: Array.isArray(messages)
-            ? messages
-            : [],
-          model: selectedModel,
+          messages: Array.isArray(messages) ? messages : [],
+          model: modelForAPI,
           abortSignal,
           searchMode,
           chatId
         })
       : await createChatStreamResponse({
           message,
-          model: selectedModel,
+          model: modelForAPI,
           chatId,
-          userId: userId,
+          userId: userId!,
           trigger,
           messageId,
           abortSignal,
@@ -209,34 +119,22 @@ export async function POST(req: Request) {
           searchMode
         })
 
-    perfTime(
-      'createChatStreamResponse resolved',
-      streamStart
-    )
-
+    // Background analytics
     ;(async () => {
       try {
         let conversationTurn = 1
-
         if (!isNewChat && !isGuest) {
-          const chat = await loadChat(chatId, userId)
-
+          const chat = await loadChat(chatId, userId!)
           if (chat?.messages) {
-            conversationTurn =
-              calculateConversationTurn(chat.messages) + 1
+            conversationTurn = calculateConversationTurn(chat.messages) + 1
           }
         }
-
         if (!isGuest && userId) {
           await trackChatEvent({
             searchMode,
             conversationTurn,
             isNewChat: isNewChat ?? false,
-            trigger:
-              (trigger as
-                | 'submit-message'
-                | 'regenerate-message') ??
-              'submit-message',
+            trigger: (trigger as any) ?? 'submit-message',
             chatId,
             userId,
             providerId: selectedModel.providerId,
@@ -244,43 +142,21 @@ export async function POST(req: Request) {
           })
         }
       } catch (error) {
-        console.error(
-          'Analytics tracking failed:',
-          error
-        )
+        console.error('Analytics tracking failed:', error)
       }
     })()
 
     if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`, 'max')
+      revalidateTag(`chat-${chatId}`)
     }
 
-    const totalTime = performance.now() - startTime
-
-    perfLog(
-      `Total API route time: ${totalTime.toFixed(2)}ms`
-    )
-
-    perfLog(`=== Summary ===`)
-
-    perfLog(
-      `Chat Type: ${isNewChat ? 'NEW' : 'EXISTING'}`
-    )
-
-    perfLog(`Total Time: ${totalTime.toFixed(2)}ms`)
-
-    perfLog(`================`)
-
     return response
+
   } catch (error) {
     console.error('API route error:', error)
-
-    return new Response(
-      'Error processing your request',
-      {
-        status: 500,
-        statusText: 'Internal Server Error'
-      }
-    )
+    return new Response('Error processing your request', {
+      status: 500,
+      statusText: 'Internal Server Error'
+    })
   }
 }
