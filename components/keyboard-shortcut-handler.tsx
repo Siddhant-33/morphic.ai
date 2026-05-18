@@ -21,8 +21,11 @@ const THEME_CYCLE: Record<string, string> = {
 
 const SEARCH_MODE_LABELS: Record<SearchMode, string> = {
   quick: 'Quick',
-  adaptive: 'Adaptive'
-}
+  adaptive: 'Adaptive',
+  analyzing: 'Analyzing',
+  image: 'Image Generation',
+  research: 'Research',   // if it exists
+} as const 
 
 export function KeyboardShortcutHandler() {
   const { theme, setTheme } = useTheme()
