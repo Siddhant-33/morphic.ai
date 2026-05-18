@@ -130,7 +130,7 @@ export async function POST(req: Request) {
         }
         if (!isGuest && userId) {
           await trackChatEvent({
-            searchMode: searchMode as any,   // ← Fixed here
+            searchMode: searchMode as any,
             conversationTurn,
             isNewChat: isNewChat ?? false,
             trigger: (trigger as any) ?? 'submit-message',
@@ -146,7 +146,7 @@ export async function POST(req: Request) {
     })()
 
     if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`)
+      revalidateTag(`chat-${chatId}`, 'layout')   // ← FIXED
     }
 
     return response
