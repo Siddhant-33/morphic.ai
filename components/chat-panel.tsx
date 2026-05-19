@@ -9,13 +9,7 @@ import {
   ArrowUp,
   ChevronDown,
   MessageCirclePlus,
-  Square,
-  Crown,
-  Sparkles,
-  Zap,
-  Check,
-  CreditCard,
-  QrCode
+  Square
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -90,12 +84,6 @@ export function ChatPanel({
   const [enterDisabled, setEnterDisabled] = useState(false)
 
   const [isInputFocused, setIsInputFocused] = useState(false)
-  const [showPricingModal, setShowPricingModal] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<'pro' | 'ultra' | null>(null)
-
-  const shouldShowPremiumGate = useMemo(() => {
-    return messages.length >= 6
-  }, [messages.length])
 
   const { close: closeArtifact } = useArtifact()
 
@@ -131,12 +119,6 @@ export function ChatPanel({
   }, [setMessages, closeArtifact, onNewChat, router])
 
   const handleNewChatRef = useRef(handleNewChat)
-
-  useEffect(() => {
-    if (messages.length >= 6) {
-      setShowPricingModal(true)
-    }
-  }, [messages.length])
 
   useEffect(() => {
     handleNewChatRef.current = handleNewChat
@@ -229,166 +211,6 @@ export function ChatPanel({
 
       {uploadedFiles.length > 0 && (
         <UploadedFileList files={uploadedFiles} onRemove={handleFileRemove} />
-      )}
-
-      {shouldShowPremiumGate && showPricingModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-xl p-4">
-          <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-background shadow-2xl">
-            <button
-              onClick={() => setShowPricingModal(false)}
-              className="absolute right-4 top-4 z-20 rounded-full border border-border bg-background/80 px-3 py-1 text-sm hover:bg-muted"
-            >
-              Close
-            </button>
-
-            {!selectedPlan ? (
-              <div className="p-5 md:p-8">
-                <div className="mb-8 text-center">
-                  <h2 className="text-3xl font-bold tracking-tight">
-                    Upgrade Your Morphic Experience
-                  </h2>
-
-                  <p className="mt-2 text-muted-foreground">
-                    You’ve reached the free usage limit. Unlock premium AI tools,
-                    faster generations, image creation and advanced research.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div className="rounded-3xl border border-border bg-background/60 p-6">
-                    <div className="mb-4">
-                      <div className="text-sm text-muted-foreground">Free</div>
-
-                      <div className="mt-2 text-4xl font-bold">₹0</div>
-                    </div>
-
-                    <ul className="space-y-3 text-sm text-muted-foreground">
-                      <li>• Limited chats</li>
-                      <li>• Limited image generation</li>
-                      <li>• Standard responses</li>
-                    </ul>
-
-                    <button className="mt-6 h-11 w-full rounded-2xl border border-border bg-background hover:bg-muted transition-all">
-                      Current Plan
-                    </button>
-                  </div>
-
-                  <div className="relative overflow-hidden rounded-3xl border border-violet-500/40 bg-violet-500/10 p-6 shadow-xl">
-                    <div className="absolute right-3 top-3 rounded-full bg-violet-500 px-3 py-1 text-xs font-semibold text-white">
-                      MOST POPULAR
-                    </div>
-
-                    <div className="mb-4">
-                      <div className="text-sm text-violet-200">Pro</div>
-
-                      <div className="mt-2 text-4xl font-bold">₹299</div>
-
-                      <div className="text-sm text-muted-foreground">
-                        per month
-                      </div>
-                    </div>
-
-                    <ul className="space-y-3 text-sm">
-                      <li>• Unlimited AI chats</li>
-                      <li>• Deep research</li>
-                      <li>• Advanced analyze mode</li>
-                      <li>• Faster responses</li>
-                      <li>• Premium image generation</li>
-                    </ul>
-
-                    <button
-                      onClick={() => setSelectedPlan('pro')}
-                      className="mt-6 h-11 w-full rounded-2xl bg-white font-semibold text-black hover:opacity-90 transition-all"
-                    >
-                      Select Plan
-                    </button>
-                  </div>
-
-                  <div className="rounded-3xl border border-border bg-background/60 p-6">
-                    <div className="mb-4">
-                      <div className="text-sm text-muted-foreground">Ultra</div>
-
-                      <div className="mt-2 text-4xl font-bold">₹799</div>
-
-                      <div className="text-sm text-muted-foreground">
-                        per month
-                      </div>
-                    </div>
-
-                    <ul className="space-y-3 text-sm text-muted-foreground">
-                      <li>• Everything in Pro</li>
-                      <li>• Unlimited image generation</li>
-                      <li>• Maximum performance</li>
-                      <li>• Early access AI tools</li>
-                      <li>• Priority processing</li>
-                    </ul>
-
-                    <button
-                      onClick={() => setSelectedPlan('ultra')}
-                      className="mt-6 h-11 w-full rounded-2xl border border-border hover:bg-muted transition-all"
-                    >
-                      Select Plan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mx-auto max-w-2xl p-5 md:p-8">
-                <h2 className="mb-2 text-3xl font-bold">Complete Your Upgrade</h2>
-
-                <p className="mb-8 text-muted-foreground">
-                  Secure checkout for Morphic{' '}
-                  {selectedPlan === 'pro' ? 'Pro' : 'Ultra'}
-                </p>
-
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <input
-                      placeholder="Full Name"
-                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
-                    />
-
-                    <input
-                      placeholder="Email Address"
-                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
-                    />
-                  </div>
-
-                  <input
-                    placeholder="Card Number"
-                    className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      placeholder="MM/YY"
-                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
-                    />
-
-                    <input
-                      placeholder="CVV"
-                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
-                    />
-                  </div>
-
-                  <input
-                    placeholder="UPI ID (optional)"
-                    className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
-                  />
-
-                  <input
-                    placeholder="Billing Address"
-                    className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
-                  />
-
-                  <button className="mt-4 h-12 rounded-2xl bg-white font-semibold text-black transition-all hover:opacity-90">
-                    Pay Securely
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       )}
 
       <form
