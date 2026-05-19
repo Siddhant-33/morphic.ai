@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     // Get search mode from cookie
     const searchModeCookie = cookieStore.get('searchMode')?.value
     const searchMode: SearchMode =
-      searchModeCookie && ['quick', 'adaptive'].includes(searchModeCookie)
+      searchModeCookie && ['quick', 'adaptive', 'planning', 'image'].includes(searchModeCookie)
         ? (searchModeCookie as SearchMode)
         : 'quick'
 
@@ -195,9 +195,12 @@ export async function POST(req: Request) {
         if (!isGuest && userId) {
           await trackChatEvent({
             searchMode:
-              searchMode === 'research'
+              searchMode === 'research' ||
+              searchMode === 'image'
                 ? 'adaptive'
-                : searchMode,
+                : searchMode === 'planning'
+                  ? 'planning'
+                  : 'quick',
             conversationTurn,
             isNewChat: isNewChat ?? false,
             trigger:
