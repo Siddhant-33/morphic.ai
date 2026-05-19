@@ -5,7 +5,18 @@ import Textarea from 'react-textarea-autosize'
 import { useRouter } from 'next/navigation'
 
 import { UseChatHelpers } from '@ai-sdk/react'
-import { ArrowUp, ChevronDown, MessageCirclePlus, Square } from 'lucide-react'
+import {
+  ArrowUp,
+  ChevronDown,
+  MessageCirclePlus,
+  Square,
+  Crown,
+  Sparkles,
+  Zap,
+  Check,
+  CreditCard,
+  QrCode
+} from 'lucide-react'
 import { toast } from 'sonner'
 
 import { SHORTCUT_EVENTS } from '@/lib/keyboard-shortcuts'
@@ -79,6 +90,30 @@ export function ChatPanel({
   const [enterDisabled, setEnterDisabled] = useState(false)
 
   const [isInputFocused, setIsInputFocused] = useState(false)
+
+  const [showPricing, setShowPricing] = useState(false)
+
+  const plans = [
+    {
+      name: 'Free',
+      price: '₹0',
+      icon: Zap,
+      features: ['Gemini Flash Lite', '1 image/day', 'Basic AI']
+    },
+    {
+      name: 'Pro',
+      price: '₹299/mo',
+      icon: Sparkles,
+      popular: true,
+      features: ['Gemini 2.5 Flash', '50 images/day', 'Research mode', 'Priority AI']
+    },
+    {
+      name: 'Ultra',
+      price: '₹999/mo',
+      icon: Crown,
+      features: ['Gemini 3 Flash Preview', 'Unlimited images', 'Deep research', 'Premium speed']
+    }
+  ]
 
   const { close: closeArtifact } = useArtifact()
 
@@ -187,6 +222,122 @@ export function ChatPanel({
     }
   }
 
+  if (showPricing) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+          <div className="border-b border-border bg-gradient-to-br from-violet-500/10 to-amber-500/10 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-semibold">Usage limit reached</h2>
+                <p className="mt-2 text-muted-foreground">
+                  Upgrade your plan to continue using Morphic AI.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowPricing(false)}
+                className="rounded-xl border border-border px-4 py-2 hover:bg-muted"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 p-6 md:grid-cols-3">
+            {plans.map(plan => {
+              const Icon = plan.icon
+
+              return (
+                <div
+                  key={plan.name}
+                  className={cn(
+                    'rounded-3xl border bg-background p-6 transition-all',
+                    plan.popular && 'border-violet-500 shadow-xl'
+                  )}
+                >
+                  <div className="mb-6 flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-amber-400 text-white">
+                      <Icon className="h-6 w-6" />
+                    </div>
+
+                    <div>
+                      <h3 className="text-xl font-semibold">{plan.name}</h3>
+                      <p className="text-muted-foreground">{plan.price}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {plan.features.map(feature => (
+                      <div key={feature} className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-muted-foreground">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    className={cn(
+                      'mt-6 w-full rounded-2xl py-3 text-sm font-medium',
+                      plan.popular
+                        ? 'bg-gradient-to-r from-violet-500 to-amber-400 text-white'
+                        : 'border border-border bg-muted'
+                    )}
+                  >
+                    Upgrade
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="border-t border-border p-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-3xl border border-border p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <QrCode className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold">UPI Payment</h3>
+                </div>
+                <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-border bg-muted">
+                  Fake QR Preview
+                </div>
+                <div className="mt-4 rounded-xl bg-muted p-3 text-center font-mono">
+                  morphicai@upi
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-border p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold">Card Payment</h3>
+                </div>
+                <div className="space-y-4">
+                  <input
+                    placeholder="Card Number"
+                    className="h-12 w-full rounded-2xl border border-border bg-background px-4"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <input
+                      placeholder="MM/YY"
+                      className="h-12 rounded-2xl border border-border bg-background px-4"
+                    />
+                    <input
+                      placeholder="CVV"
+                      className="h-12 rounded-2xl border border-border bg-background px-4"
+                    />
+                  </div>
+                  <button className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-amber-400 text-white">
+                    Complete Payment
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -280,29 +431,32 @@ export function ChatPanel({
             onBlur={() => setIsInputFocused(false)}
             placeholder={
               (() => {
-                const searchMode = document.cookie
+                const mode = document.cookie
                   .split('; ')
                   .find(row => row.startsWith('searchMode='))
                   ?.split('=')[1]
 
-                if (messages.length > 0) {
-                  return 'Reply...'
+                if (mode === 'adaptive') {
+                  return messages.length > 0
+                    ? 'Continue adaptive chat...'
+                    : 'Ask anything intelligently...'
                 }
 
-                switch (searchMode) {
-                  case 'research':
-                    return 'Research on anything...'
-
-                  case 'image':
-                    return 'Generate a picture...'
-
-                  case 'adaptive':
-                    return 'Think deeply about anything...'
-
-                  case 'quick':
-                  default:
-                    return 'Ask anything...'
+                if (mode === 'research') {
+                  return messages.length > 0
+                    ? 'Continue research...'
+                    : 'Research on anything...'
                 }
+
+                if (mode === 'image') {
+                  return messages.length > 0
+                    ? 'Describe more image details...'
+                    : 'Generate a picture of...'
+                }
+
+                return messages.length > 0
+                  ? 'Reply...'
+                  : 'Search anything...'
               })()
             }
             spellCheck={false}
