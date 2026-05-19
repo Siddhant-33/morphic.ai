@@ -151,16 +151,12 @@ export function Chat({
           status={status}
           chatId={chatId}
           isGuest={isGuest}
-          addToolResult={({ toolCallId, result }) => {
-            addToolResult({
-              tool: 'default',
-              toolCallId,
-              output: result
-            })
-          }}
+          addToolResult={addToolResult as any}
           scrollContainerRef={scrollContainerRef}
           onUpdateMessage={async () => {}}
-          reload={() => {}}
+          reload={async () => {
+            return undefined
+          }}
           error={error}
         />
 
