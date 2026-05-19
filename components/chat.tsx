@@ -51,17 +51,15 @@ export function Chat({
   modelSelectorData?: ModelSelectorData
 }) {
   const router = useRouter()
+  const [showPricingModal, setShowPricingModal] = useState(false)
 
   // Generate a stable chatId on the client side
-  // - If providedId exists (e.g., /search/[id]), use it for existing chats
-  // - Otherwise, generate a new ID (e.g., / homepage for new chats)
   const [chatId, setChatId] = useState(() => providedId || generateId())
 
   // Callback to reset chat state when user clicks "New" button
   const handleNewChat = () => {
     const newId = generateId()
     setChatId(newId)
-    // Clear other chat-related state that persists due to Next.js 16 component caching
     setInput('')
     setUploadedFiles([])
     setErrorModal({
@@ -96,11 +94,10 @@ export function Chat({
     addToolResult,
     error
   } = useChat({
-    id: chatId, // use the client-generated or provided chatId
+    id: chatId,
     transport: new DefaultChatTransport({
       api: '/api/chat',
       prepareSendMessagesRequest: ({ messages, trigger, messageId }) => {
-        // Simplify by passing AI SDK's default trigger values directly
         const lastMessage = messages[messages.length - 1]
         const messageToRegenerate =
           trigger === 'regenerate-message'
@@ -109,7 +106,7 @@ export function Chat({
 
         return {
           body: {
-            trigger, // Use AI SDK's default trigger value directly
+            trigger,
             chatId: chatId,
             messageId,
             ...(isGuest ? { messages } : {}),
@@ -126,6 +123,21 @@ export function Chat({
               savedMessages.length === 0
           }
         }
+      },
+      // Error handling implementation
+      async fetch(url, options) {
+        const response = await fetch(url, options)
+        if (!response.ok) {
+          try {
+            const data = await response.json()
+            if (data?.showPricingModal) {
+              setShowPricingModal(true)
+              return new Response(JSON.stringify(data), { status: response.status })
+            }
+          } catch (e) {}
+          throw new Error('Request failed')
+        }
+        return response
       }
     }),
     messages: savedMessages,
@@ -133,8 +145,6 @@ export function Chat({
       window.dispatchEvent(new CustomEvent('chat-history-updated'))
     },
     onError: error => {
-      // Handle rate limiting errors from Vercel WAF
-      // Check for status codes in error message or specific rate limit indicators
       const errorMessage = error.message?.toLowerCase() || ''
       const isRateLimit =
         error.message?.includes('429') ||
@@ -142,7 +152,6 @@ export function Chat({
         errorMessage.includes('too many requests') ||
         errorMessage.includes('daily limit')
 
-      // Check for authentication errors
       const isAuthError =
         error.message?.includes('401') ||
         errorMessage.includes('unauthorized') ||
@@ -150,23 +159,18 @@ export function Chat({
         errorMessage.includes('sign in to continue')
 
       if (isRateLimit) {
-        // Try to parse JSON error response for quality mode rate limit
         let parsedError: {
           error?: string
           resetAt?: number
           remaining?: number
         } = {}
         try {
-          // Extract JSON from error message if it exists
           const jsonMatch = error.message?.match(/\{.*\}/)
           if (jsonMatch) {
             parsedError = JSON.parse(jsonMatch[0])
           }
-        } catch {
-          // Ignore parse errors
-        }
+        } catch {}
 
-        // Use parsed error message or fallback
         const userMessage =
           parsedError.error ||
           'You have reached your daily limit for quality mode chat requests.'
@@ -193,7 +197,6 @@ export function Chat({
           message: error.message
         })
       } else {
-        // For general errors, still use toast for less intrusive notification
         toast.error(`Error in chat: ${error.message}`)
       }
     },
@@ -205,14 +208,12 @@ export function Chat({
     setInput(e.target.value)
   }
 
-  // Convert messages array to sections array
   const sections = useMemo<ChatSection[]>(() => {
     const result: ChatSection[] = []
     let currentSection: ChatSection | null = null
 
     for (const message of messages) {
       if (message.role === 'user') {
-        // Start a new section when a user message is found
         if (currentSection) {
           result.push(currentSection)
         }
@@ -222,13 +223,10 @@ export function Chat({
           assistantMessages: []
         }
       } else if (currentSection && message.role === 'assistant') {
-        // Add assistant message to the current section
         currentSection.assistantMessages.push(message)
       }
-      // Ignore other role types like 'system' for now
     }
 
-    // Add the last section if exists
     if (currentSection) {
       result.push(currentSection)
     }
@@ -236,10 +234,6 @@ export function Chat({
     return result
   }, [messages])
 
-  // Listen for copy message shortcut
-  // Uses ref to avoid re-registering listener on every messages change.
-  // Uses defaultPrevented + visibility check to prevent duplicate handling
-  // when multiple Chat instances are mounted (Next.js component caching).
   const messagesRef = useRef(messages)
   useEffect(() => {
     messagesRef.current = messages
@@ -248,7 +242,6 @@ export function Chat({
   useEffect(() => {
     const handleCopyMessage = (e: Event) => {
       if (e.defaultPrevented) return
-      // Only handle in the visible (active) Chat instance
       if (!scrollContainerRef.current?.offsetParent) return
       e.preventDefault()
 
@@ -281,7 +274,6 @@ export function Chat({
       window.removeEventListener(SHORTCUT_EVENTS.copyMessage, handleCopyMessage)
   }, [])
 
-  // Dispatch custom event when messages change
   useEffect(() => {
     window.dispatchEvent(
       new CustomEvent('messages-changed', {
@@ -290,14 +282,13 @@ export function Chat({
     )
   }, [messages.length])
 
-  // Detect if scroll container is at the bottom
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
 
     const updateIsAtBottom = () => {
       const { scrollTop, scrollHeight, clientHeight } = container
-      const threshold = 50 // threshold in pixels
+      const threshold = 50
       setIsAtBottom(scrollHeight - scrollTop - clientHeight < threshold)
     }
 
@@ -314,7 +305,6 @@ export function Chat({
     }
   }, [messages.length])
 
-  // Check scroll position when messages change (during generation)
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -328,9 +318,7 @@ export function Chat({
     return () => cancelAnimationFrame(frame)
   }, [messages])
 
-  // Scroll to the section when a new user message is sent
   useEffect(() => {
-    // Only scroll if this chat is currently visible in the URL
     const isCurrentChat =
       window.location.pathname === `/search/${chatId}` ||
       (window.location.pathname === '/' && sections.length > 0)
@@ -338,7 +326,6 @@ export function Chat({
     if (isCurrentChat && sections.length > 0) {
       const lastMessage = messages[messages.length - 1]
       if (lastMessage && lastMessage.role === 'user') {
-        // If the last message is from user, find the corresponding section
         const sectionId = lastMessage.id
         requestAnimationFrame(() => {
           const sectionElement = document.getElementById(`section-${sectionId}`)
@@ -354,12 +341,10 @@ export function Chat({
   ) => {
     if (!chatId) {
       toast.error('Chat ID is missing.')
-      console.error('handleUpdateAndReloadMessage: chatId is undefined.')
       return
     }
 
     try {
-      // Update the message locally with the same ID
       setMessages(prevMessages => {
         const messageIndex = prevMessages.findIndex(
           m => m.id === editedMessageId
@@ -375,7 +360,6 @@ export function Chat({
         return updatedMessages
       })
 
-      // Regenerate from this message
       await regenerate({ messageId: editedMessageId })
     } catch (error) {
       console.error('Error during message edit and reload process:', error)
@@ -392,7 +376,6 @@ export function Chat({
     }
 
     try {
-      // Use the SDK's regenerate function with the specific messageId
       await regenerate({ messageId: reloadFromFollowerMessageId })
     } catch (error) {
       console.error(
@@ -428,8 +411,6 @@ export function Chat({
       setInput('')
       setUploadedFiles([])
 
-      // Push URL state immediately after sending message (for new chats)
-      // Check if we're on the root path (new chat)
       if (!isGuest && window.location.pathname === '/') {
         window.history.pushState({}, '', `/search/${chatId}`)
       }
@@ -482,10 +463,8 @@ export function Chat({
             toolCallId: string
             result: any
           }) => {
-            // Find the tool name from the message parts
             let toolName = 'unknown'
 
-            // Optimize by breaking early once found
             outerLoop: for (const message of messages) {
               if (!message.parts) continue
 
@@ -497,7 +476,7 @@ export function Chat({
                   isToolTypePart(part) &&
                   part.toolCallId === toolCallId
                 ) {
-                  toolName = part.type.substring(5) // Remove 'tool-' prefix
+                  toolName = part.type.substring(5)
                   break outerLoop
                 } else if (
                   isDynamicToolPart(part) &&
@@ -547,7 +526,6 @@ export function Chat({
           onRetry={
             errorModal.type !== 'rate-limit'
               ? () => {
-                  // Retry the last message if not rate limited
                   if (messages.length > 0) {
                     const lastUserMessage = messages
                       .filter(m => m.role === 'user')
@@ -560,11 +538,107 @@ export function Chat({
               : undefined
           }
           onAuthClose={() => {
-            // Clear messages and navigate to root
             setMessages([])
             router.push('/')
           }}
         />
+
+        {showPricingModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <div className="relative w-full max-w-4xl overflow-y-auto max-h-[90vh] rounded-3xl border border-border bg-background p-6 md:p-8 shadow-2xl">
+              <button
+                onClick={() => setShowPricingModal(false)}
+                className="absolute right-4 top-4 rounded-full border border-border px-3 py-1 text-sm hover:bg-muted"
+              >
+                Close
+              </button>
+
+              <div className="mb-8 text-center">
+                <h2 className="text-3xl font-bold tracking-tight">
+                  Upgrade Your Experience
+                </h2>
+                <p className="mt-3 text-muted-foreground">
+                  You’ve reached your free usage limit.
+                  Upgrade for higher limits, faster AI,
+                  image generation, research tools and more.
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold">Starter Pro</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Perfect for casual users</p>
+                  </div>
+                  <div className="mb-6 text-4xl font-bold">
+                    ₹199<span className="text-base font-normal text-muted-foreground">/month</span>
+                  </div>
+                  <ul className="space-y-3 text-sm">
+                    <li>✓ Faster responses</li>
+                    <li>✓ Research Mode</li>
+                    <li>✓ More messages</li>
+                    <li>✓ Image generation</li>
+                  </ul>
+                  <button
+                    className="mt-6 w-full rounded-2xl bg-black px-4 py-3 text-white dark:bg-white dark:text-black"
+                    onClick={() => alert('Demo Payment Gateway\n\nUPI: morphic@upi\nCard: 4242 4242 4242 4242')}
+                  >
+                    Select Plan
+                  </button>
+                </div>
+
+                <div className="rounded-3xl border-2 border-primary bg-card p-6 shadow-xl scale-[1.02]">
+                  <div className="mb-4">
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">MOST POPULAR</span>
+                    <h3 className="mt-3 text-xl font-semibold">Pro Ultra</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Best for power users</p>
+                  </div>
+                  <div className="mb-6 text-4xl font-bold">
+                    ₹499<span className="text-base font-normal text-muted-foreground">/month</span>
+                  </div>
+                  <ul className="space-y-3 text-sm">
+                    <li>✓ Unlimited chat</li>
+                    <li>✓ Priority AI speed</li>
+                    <li>✓ Deep research</li>
+                    <li>✓ Premium image generation</li>
+                    <li>✓ Advanced reasoning</li>
+                  </ul>
+                  <button
+                    className="mt-6 w-full rounded-2xl bg-black px-4 py-3 text-white dark:bg-white dark:text-black"
+                    onClick={() => alert('Demo Payment Gateway\n\nUPI: morphic@upi\nCard: 4242 4242 4242 4242')}
+                  >
+                    Select Plan
+                  </button>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold">Enterprise</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Teams & creators</p>
+                  </div>
+                  <div className="mb-6 text-4xl font-bold">
+                    ₹1499<span className="text-base font-normal text-muted-foreground">/month</span>
+                  </div>
+                  <ul className="space-y-3 text-sm">
+                    <li>✓ Maximum limits</li>
+                    <li>✓ Premium support</li>
+                    <li>✓ All future tools</li>
+                    <li>✓ Team access</li>
+                  </ul>
+                  <button
+                    className="mt-6 w-full rounded-2xl bg-black px-4 py-3 text-white dark:bg-white dark:text-black"
+                    onClick={() => alert('Demo Payment Gateway\n\nUPI: morphic@upi\nCard: 4242 4242 4242 4242')}
+                  >
+                    Select Plan
+                  </button>
+                </div>
+              </div>
+              <div className="mt-8 text-center text-sm text-muted-foreground">
+                Free limits reset automatically after 6 hours.
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ChatProvider>
   )
