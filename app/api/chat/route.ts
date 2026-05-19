@@ -66,8 +66,8 @@ export async function POST(req: Request) {
     }
 
     if (!isGuest && userId) {
-      const limit = await checkAndEnforceOverallChatLimit(userId)
-      if (limit) return limit
+      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId)
+      if (overallLimitResponse) return overallLimitResponse
     }
 
     const response = isGuest
@@ -90,9 +90,9 @@ export async function POST(req: Request) {
           searchMode
         })
 
-    // Fixed revalidateTag
+    // Fixed revalidateTag (Next.js 16 requires tag + type)
     if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`)
+      revalidateTag(`chat-${chatId}`, 'layout')
     }
 
     return response
