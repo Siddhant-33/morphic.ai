@@ -14,6 +14,8 @@ import { isProviderEnabled } from '@/lib/utils/registry'
 export const maxDuration = 300
 
 export async function POST(req: Request) {
+  const abortSignal = req.signal
+
   try {
     const body = await req.json()
     const { message, messages, chatId, trigger, messageId, isNewChat } = body
@@ -25,25 +27,31 @@ export async function POST(req: Request) {
       const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
       if (!guestChatEnabled) {
         return new Response(JSON.stringify({ 
-          error: "Guest access disabled. Please sign in.", 
+          error: "Please sign in to continue", 
           requiresAuth: true 
         }), { 
           status: 401,
           headers: { 'Content-Type': 'application/json' }
         })
       }
+
       const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null
-      const limit = await checkAndEnforceGuestLimit(ip)
-      if (limit) return limit
+      const guestLimit = await checkAndEnforceGuestLimit(ip)
+      if (guestLimit) return guestLimit
     }
 
     const cookieStore = await cookies()
-    const searchMode: SearchMode = (cookieStore.get('searchMode')?.value as SearchMode) || 'quick'
+    const searchMode: SearchMode = 
+      (cookieStore.get('searchMode')?.value as SearchMode) || 'quick'
 
-    const selectedModel = await selectModel({ searchMode, cookieStore, taskType: 'chat' })
+    const selectedModel: any = await selectModel({
+      searchMode,
+      cookieStore,
+      taskType: 'chat'
+    })
 
     if (!selectedModel) {
-      return new Response('No model available', { status: 503 })
+      return new Response('No enabled model is available', { status: 503 })
     }
 
     const modelForAPI = {
@@ -53,11 +61,20 @@ export async function POST(req: Request) {
       providerId: selectedModel.providerId,
     }
 
+    if (!isProviderEnabled(selectedModel.providerId)) {
+      return new Response('Selected provider not enabled', { status: 404 })
+    }
+
+    if (!isGuest && userId) {
+      const limit = await checkAndEnforceOverallChatLimit(userId)
+      if (limit) return limit
+    }
+
     const response = isGuest
       ? await createEphemeralChatStreamResponse({
           messages: Array.isArray(messages) ? messages : [],
           model: modelForAPI,
-          abortSignal: req.signal,
+          abortSignal,
           searchMode,
           chatId
         })
@@ -68,12 +85,15 @@ export async function POST(req: Request) {
           userId: userId!,
           trigger,
           messageId,
-          abortSignal: req.signal,
+          abortSignal,
           isNewChat,
           searchMode
         })
 
-    if (chatId && !isGuest) revalidateTag(`chat-${chatId}`)
+    // Fixed revalidateTag
+    if (chatId && !isGuest) {
+      revalidateTag(`chat-${chatId}`)
+    }
 
     return response
 
