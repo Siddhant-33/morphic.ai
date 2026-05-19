@@ -278,7 +278,33 @@ export function ChatPanel({
             onCompositionEnd={handleCompositionEnd}
             onFocus={() => setIsInputFocused(true)}
             onBlur={() => setIsInputFocused(false)}
-            placeholder={messages.length > 0 ? 'Reply...' : 'Ask anything...'}
+            placeholder={
+              (() => {
+                const searchMode = document.cookie
+                  .split('; ')
+                  .find(row => row.startsWith('searchMode='))
+                  ?.split('=')[1]
+
+                if (messages.length > 0) {
+                  return 'Reply...'
+                }
+
+                switch (searchMode) {
+                  case 'research':
+                    return 'Research on anything...'
+
+                  case 'image':
+                    return 'Generate a picture...'
+
+                  case 'adaptive':
+                    return 'Think deeply about anything...'
+
+                  case 'quick':
+                  default:
+                    return 'Ask anything...'
+                }
+              })()
+            }
             spellCheck={false}
             value={input}
             disabled={isLoading || isToolInvocationInProgress()}
