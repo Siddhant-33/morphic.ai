@@ -16,6 +16,8 @@ import { isProviderEnabled } from '@/lib/utils/registry'
 
 export const maxDuration = 300
 
+const MAX_FREE_MESSAGES = 20
+
 export async function POST(req: Request) {
   const startTime = performance.now()
   const abortSignal = req.signal
@@ -36,48 +38,66 @@ export async function POST(req: Request) {
       isNewChat
     } = body
 
-    perfLog(
-      `API Route - Start: chatId=${chatId}, trigger=${trigger}`
-    )
-
-    if (trigger === 'regenerate-message') {
-      if (!messageId) {
-        return new Response(
-          'messageId is required for regeneration',
-          {
-            status: 400
-          }
-        )
-      }
-    } else if (trigger === 'submit-message') {
-      if (!message) {
-        return new Response(
-          'message is required for submission',
-          {
-            status: 400
-          }
-        )
-      }
-    }
-
-    const referer = req.headers.get('referer')
-
-    const isSharePage = referer?.includes('/share/')
-
     const authStart = performance.now()
 
     const userId = await getCurrentUserId()
 
     perfTime('Auth completed', authStart)
 
-    if (isSharePage) {
-      return new Response(
-        'Chat API is not available on share pages',
+    const cookieStore = await cookies()
+
+    const searchModeCookie = cookieStore.get('searchMode')?.value
+
+    const searchMode: SearchMode =
+      searchModeCookie &&
+      ['quick', 'adaptive', 'research', 'image'].includes(
+        searchModeCookie
+      )
+        ? (searchModeCookie as SearchMode)
+        : 'quick'
+
+    /*
+      SIMPLE FREE LIMIT
+    */
+
+    if (
+      Array.isArray(messages) &&
+      messages.length >= MAX_FREE_MESSAGES
+    ) {
+      return Response.json(
         {
-          status: 403
+          error: 'FREE_LIMIT_REACHED'
+        },
+        {
+          status: 429
         }
       )
     }
+
+    /*
+      MODEL SELECTION
+    */
+
+    const selectedModel = await selectModel({
+      searchMode,
+      cookieStore
+    })
+
+    if (!selectedModel) {
+      return new Response('No enabled model is available', {
+        status: 503
+      })
+    }
+
+    if (!isProviderEnabled(selectedModel.providerId)) {
+      return new Response('Provider not enabled', {
+        status: 404
+      })
+    }
+
+    /*
+      GUEST LIMITS
+    */
 
     const guestChatEnabled =
       process.env.ENABLE_GUEST_CHAT === 'true'
@@ -107,52 +127,9 @@ export async function POST(req: Request) {
       }
     }
 
-    const cookieStore = await cookies()
-
-    const searchModeCookie =
-      cookieStore.get('searchMode')?.value
-
-    const searchMode: SearchMode =
-      searchModeCookie &&
-      [
-        'quick',
-        'adaptive',
-        'research',
-        'image'
-      ].includes(searchModeCookie)
-        ? (searchModeCookie as SearchMode)
-        : 'quick'
-
-    const taskType =
-      searchMode === 'image'
-        ? 'image'
-        : searchMode === 'research'
-          ? 'research'
-          : 'chat'
-
-    const selectedModel = await selectModel({
-      searchMode,
-      cookieStore,
-      taskType
-    })
-
-    if (!selectedModel) {
-      return new Response(
-        'No enabled model is available',
-        {
-          status: 503
-        }
-      )
-    }
-
-    if (!isProviderEnabled(selectedModel.providerId)) {
-      return new Response(
-        `Selected provider is not enabled ${selectedModel.providerId}`,
-        {
-          status: 404
-        }
-      )
-    }
+    /*
+      USER LIMITS
+    */
 
     if (!isGuest) {
       const overallLimitResponse =
@@ -163,10 +140,12 @@ export async function POST(req: Request) {
       }
     }
 
-    const streamStart = performance.now()
+    /*
+      CHAT STREAM
+    */
 
     perfLog(
-      `createChatStreamResponse - Start: model=${selectedModel.providerId}:${selectedModel.id}`
+      `Streaming with ${selectedModel.providerId}:${selectedModel.id}`
     )
 
     const response = isGuest
@@ -191,10 +170,9 @@ export async function POST(req: Request) {
           searchMode
         })
 
-    perfTime(
-      'createChatStreamResponse resolved',
-      streamStart
-    )
+    /*
+      ANALYTICS
+    */
 
     ;(async () => {
       try {
@@ -212,14 +190,10 @@ export async function POST(req: Request) {
         if (!isGuest && userId) {
           await trackChatEvent({
             searchMode:
-              searchMode === 'research'
-                ? 'planning'
-                : searchMode === 'image'
-                  ? 'quick'
-                  : (searchMode as
-                      | 'quick'
-                      | 'adaptive'
-                      | 'planning'),
+              searchMode === 'research' ||
+              searchMode === 'image'
+                ? 'adaptive'
+                : searchMode,
             conversationTurn,
             isNewChat: isNewChat ?? false,
             trigger:
@@ -234,292 +208,12 @@ export async function POST(req: Request) {
           })
         }
       } catch (error) {
-        console.error(
-          'Analytics tracking failed:',
-          error
-        )
-      }
-    })()
-
-    if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`, 'max')
-    }
-
-    const totalTime =
-      performance.now() - startTime
-
-    perfLog(
-      `Total API route time: ${totalTime.toFixed(2)}ms`
-    )
-
-    return response
-  } catch (error) {
-    console.error('API route error:', error)
-
-    return new Response(
-      'Error processing your request',
-      {
-        status: 500
-      }
-    )
-  }
-}
-import { selectModel } from '@/lib/utils/model-selection'
-import { perfLog, perfTime } from '@/lib/utils/perf-logging'
-import { resetAllCounters } from '@/lib/utils/perf-tracking'
-import { isProviderEnabled } from '@/lib/utils/registry'
-
-export const maxDuration = 300
-
-const IMAGE_LIMIT_HOURS = 6
-const MAX_FREE_IMAGE_REQUESTS = 1
-const MAX_FREE_MESSAGES = 20
-
-export async function POST(req: Request) {
-  const startTime = performance.now()
-  const abortSignal = req.signal
-
-  if (process.env.ENABLE_PERF_LOGGING === 'true') {
-    resetAllCounters()
-  }
-
-  try {
-    const body = await req.json()
-
-    const {
-      message,
-      messages,
-      chatId,
-      trigger,
-      messageId,
-      isNewChat
-    } = body
-
-    const authStart = performance.now()
-
-    const userId = await getCurrentUserId()
-
-    perfTime('Auth completed', authStart)
-
-    const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
-
-    const isGuest = !userId
-
-    if (isGuest && !guestChatEnabled) {
-      return new Response('Authentication required', {
-        status: 401
-      })
-    }
-
-    if (isGuest) {
-      const forwardedFor = req.headers.get('x-forwarded-for') || ''
-
-      const ip =
-        forwardedFor.split(',')[0]?.trim() ||
-        req.headers.get('x-real-ip') ||
-        null
-
-      const guestLimitResponse = await checkAndEnforceGuestLimit(ip)
-
-      if (guestLimitResponse) return guestLimitResponse
-    }
-
-    const cookieStore = await cookies()
-
-    const searchModeCookie =
-      cookieStore.get('searchMode')?.value || 'quick'
-
-    const searchMode: SearchMode =
-      ['quick', 'adaptive', 'research', 'image'].includes(
-        searchModeCookie
-      )
-        ? (searchModeCookie as SearchMode)
-        : 'quick'
-
-    /*
-      IMAGE LIMIT LOGIC
-    */
-
-    if (searchMode === 'image') {
-      const imageUsageCookie =
-        cookieStore.get('image_generation_usage')?.value
-
-      const now = Date.now()
-
-      let usage = {
-        count: 0,
-        timestamp: now
-      }
-
-      if (imageUsageCookie) {
-        try {
-          usage = JSON.parse(imageUsageCookie)
-        } catch {}
-      }
-
-      const diffHours =
-        (now - usage.timestamp) / (1000 * 60 * 60)
-
-      if (diffHours >= IMAGE_LIMIT_HOURS) {
-        usage = {
-          count: 0,
-          timestamp: now
-        }
-      }
-
-      if (usage.count >= MAX_FREE_IMAGE_REQUESTS) {
-        return Response.json(
-          {
-            error:
-              'You have reached your daily free image generation limit.',
-            pricingRequired: true,
-            resetInHours: IMAGE_LIMIT_HOURS
-          },
-          {
-            status: 429
-          }
-        )
-      }
-
-      usage.count += 1
-
-      cookieStore.set(
-        'image_generation_usage',
-        JSON.stringify(usage),
-        {
-          maxAge: 60 * 60 * IMAGE_LIMIT_HOURS,
-          path: '/'
-        }
-      )
-    }
-
-    /*
-      EXCESSIVE CHAT USAGE
-    */
-
-    if (
-      Array.isArray(messages) &&
-      messages.length >= MAX_FREE_MESSAGES
-    ) {
-      return Response.json(
-        {
-          error: 'Free usage limit reached',
-          pricingRequired: true,
-          resetInHours: IMAGE_LIMIT_HOURS
-        },
-        {
-          status: 429
-        }
-      )
-    }
-
-    const taskType =
-      searchMode === 'image'
-        ? 'image'
-        : searchMode === 'research'
-          ? 'research'
-          : 'chat'
-
-    const selectedModel = await selectModel({
-      searchMode,
-      cookieStore,
-      taskType
-    })
-
-    if (!selectedModel) {
-      return new Response('No enabled model is available', {
-        status: 503
-      })
-    }
-
-    if (!isProviderEnabled(selectedModel.providerId)) {
-      return new Response(
-        `Selected provider is not enabled ${selectedModel.providerId}`,
-        {
-          status: 404
-        }
-      )
-    }
-
-    if (!isGuest) {
-      const overallLimitResponse =
-        await checkAndEnforceOverallChatLimit(userId)
-
-      if (overallLimitResponse) return overallLimitResponse
-    }
-
-    const streamStart = performance.now()
-
-    perfLog(
-      `createChatStreamResponse - model=${selectedModel.providerId}:${selectedModel.id}`
-    )
-
-    const response = isGuest
-      ? await createEphemeralChatStreamResponse({
-          messages: Array.isArray(messages)
-            ? messages
-            : [],
-          model: selectedModel,
-          abortSignal,
-          searchMode,
-          chatId
-        })
-      : await createChatStreamResponse({
-          message,
-          model: selectedModel,
-          chatId,
-          userId,
-          trigger,
-          messageId,
-          abortSignal,
-          isNewChat,
-          searchMode
-        })
-
-    perfTime(
-      'createChatStreamResponse resolved',
-      streamStart
-    )
-
-    ;(async () => {
-      try {
-        let conversationTurn = 1
-
-        if (!isNewChat && !isGuest) {
-          const chat = await loadChat(chatId, userId)
-
-          if (chat?.messages) {
-            conversationTurn =
-              calculateConversationTurn(chat.messages) + 1
-          }
-        }
-
-        if (!isGuest && userId) {
-          await trackChatEvent({
-            searchMode,
-            conversationTurn,
-            isNewChat: isNewChat ?? false,
-            trigger:
-              (trigger as
-                | 'submit-message'
-                | 'regenerate-message') ??
-              'submit-message',
-            chatId,
-            userId,
-            providerId: selectedModel.providerId,
-            modelId: selectedModel.id
-          })
-        }
-      } catch (error) {
-        console.error(
-          'Analytics tracking failed:',
-          error
-        )
+        console.error(error)
       }
     })()
 
     /*
-      FIXED NEXTJS 16 ERROR
+      CACHE
     */
 
     if (chatId && !isGuest) {
@@ -528,9 +222,7 @@ export async function POST(req: Request) {
 
     const totalTime = performance.now() - startTime
 
-    perfLog(
-      `Total API route time: ${totalTime.toFixed(2)}ms`
-    )
+    perfLog(`Total API route time: ${totalTime}ms`)
 
     return response
   } catch (error) {
