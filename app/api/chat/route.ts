@@ -23,11 +23,12 @@ export async function POST(req: Request) {
     const userId = await getCurrentUserId()
     const isGuest = !userId
 
+    // Guest User Fix
     if (isGuest) {
       const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
       if (!guestChatEnabled) {
         return new Response(JSON.stringify({ 
-          error: "Please sign in to continue", 
+          error: "Please sign in or create account to continue",
           requiresAuth: true 
         }), { 
           status: 401,
@@ -41,8 +42,7 @@ export async function POST(req: Request) {
     }
 
     const cookieStore = await cookies()
-    const searchMode: SearchMode = 
-      (cookieStore.get('searchMode')?.value as SearchMode) || 'quick'
+    const searchMode: SearchMode = (cookieStore.get('searchMode')?.value as SearchMode) || 'quick'
 
     const selectedModel: any = await selectModel({
       searchMode,
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     })
 
     if (!selectedModel) {
-      return new Response('No enabled model is available', { status: 503 })
+      return new Response('No model available', { status: 503 })
     }
 
     const modelForAPI = {
@@ -59,15 +59,6 @@ export async function POST(req: Request) {
       name: selectedModel.name || selectedModel.id,
       provider: selectedModel.provider || 'google',
       providerId: selectedModel.providerId,
-    }
-
-    if (!isProviderEnabled(selectedModel.providerId)) {
-      return new Response('Selected provider not enabled', { status: 404 })
-    }
-
-    if (!isGuest && userId) {
-      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId)
-      if (overallLimitResponse) return overallLimitResponse
     }
 
     const response = isGuest
@@ -90,9 +81,8 @@ export async function POST(req: Request) {
           searchMode
         })
 
-    // Fixed revalidateTag (Next.js 16 requires tag + type)
     if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`, 'layout')
+      revalidateTag(`chat-${chatId}`)
     }
 
     return response
