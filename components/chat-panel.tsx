@@ -11,11 +11,14 @@ import {
   MessageCirclePlus,
   Square
 } from 'lucide-react'
-import { toast } from 'sonner'
 
 import { SHORTCUT_EVENTS } from '@/lib/keyboard-shortcuts'
 import { UploadedFile } from '@/lib/types'
-import type { UIDataTypes, UIMessage, UITools } from '@/lib/types/ai'
+import type {
+  UIDataTypes,
+  UIMessage,
+  UITools
+} from '@/lib/types/ai'
 import type { ModelSelectorData } from '@/lib/types/model-selector'
 import { cn } from '@/lib/utils'
 
@@ -33,9 +36,15 @@ const INPUT_UPDATE_DELAY_MS = 10
 interface ChatPanelProps {
   chatId: string
   input: string
-  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
-  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void
-  status: UseChatHelpers<UIMessage<unknown, UIDataTypes, UITools>>['status']
+  handleInputChange: (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => void
+  handleSubmit: (
+    e: React.FormEvent<HTMLFormElement>
+  ) => void
+  status: UseChatHelpers<
+    UIMessage<unknown, UIDataTypes, UITools>
+  >['status']
   messages: UIMessage[]
   setMessages: (messages: UIMessage[]) => void
   query?: string
@@ -44,12 +53,15 @@ interface ChatPanelProps {
   showScrollToBottomButton: boolean
   scrollContainerRef: React.RefObject<HTMLDivElement>
   uploadedFiles: UploadedFile[]
-  setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>
+  setUploadedFiles: React.Dispatch<
+    React.SetStateAction<UploadedFile[]>
+  >
   onNewChat?: () => void
   isGuest?: boolean
   isCloudDeployment?: boolean
   modelSelectorData?: ModelSelectorData
   sections?: { id: string; userMessage: UIMessage }[]
+  isUsageBlocked?: boolean
 }
 
 export function ChatPanel({
@@ -71,7 +83,8 @@ export function ChatPanel({
   isGuest = false,
   isCloudDeployment = false,
   modelSelectorData,
-  sections = []
+  sections = [],
+  isUsageBlocked = false
 }: ChatPanelProps) {
   const router = useRouter()
 
@@ -79,20 +92,27 @@ export function ChatPanel({
 
   const isFirstRender = useRef(true)
 
-  const [isComposing, setIsComposing] = useState(false)
+  const [isComposing, setIsComposing] =
+    useState(false)
 
-  const [enterDisabled, setEnterDisabled] = useState(false)
+  const [enterDisabled, setEnterDisabled] =
+    useState(false)
 
-  const [isInputFocused, setIsInputFocused] = useState(false)
+  const [isInputFocused, setIsInputFocused] =
+    useState(false)
 
   const { close: closeArtifact } = useArtifact()
 
-  const isLoading = status === 'submitted' || status === 'streaming'
+  const isLoading =
+    status === 'submitted' ||
+    status === 'streaming'
 
   const hasAvailableModels =
-    isCloudDeployment || modelSelectorData?.hasAvailableModels !== false
+    isCloudDeployment ||
+    modelSelectorData?.hasAvailableModels !== false
 
-  const handleCompositionStart = () => setIsComposing(true)
+  const handleCompositionStart = () =>
+    setIsComposing(true)
 
   const handleCompositionEnd = () => {
     setIsComposing(false)
@@ -116,16 +136,25 @@ export function ChatPanel({
     onNewChat?.()
 
     router.push('/')
-  }, [setMessages, closeArtifact, onNewChat, router])
+  }, [
+    setMessages,
+    closeArtifact,
+    onNewChat,
+    router
+  ])
 
-  const handleNewChatRef = useRef(handleNewChat)
+  const handleNewChatRef =
+    useRef(handleNewChat)
 
   useEffect(() => {
-    handleNewChatRef.current = handleNewChat
+    handleNewChatRef.current =
+      handleNewChat
   }, [handleNewChat])
 
   useEffect(() => {
-    const handleNewChatShortcut = (e: Event) => {
+    const handleNewChatShortcut = (
+      e: Event
+    ) => {
       if (e.defaultPrevented) return
 
       e.preventDefault()
@@ -133,7 +162,10 @@ export function ChatPanel({
       handleNewChatRef.current()
     }
 
-    window.addEventListener(SHORTCUT_EVENTS.newChat, handleNewChatShortcut)
+    window.addEventListener(
+      SHORTCUT_EVENTS.newChat,
+      handleNewChatShortcut
+    )
 
     return () => {
       window.removeEventListener(
@@ -143,28 +175,12 @@ export function ChatPanel({
     }
   }, [])
 
-  const isToolInvocationInProgress = () => {
-    if (!messages.length) return false
-
-    const lastMessage = messages[messages.length - 1]
-
-    if (lastMessage.role !== 'assistant' || !lastMessage.parts) return false
-
-    const parts = lastMessage.parts
-
-    const lastPart = parts[parts.length - 1]
-
-    return (
-      (lastPart?.type === 'tool-search' ||
-        lastPart?.type === 'tool-fetch' ||
-        lastPart?.type === 'tool-askQuestion') &&
-      ((lastPart as any)?.state === 'input-streaming' ||
-        (lastPart as any)?.state === 'input-available')
-    )
-  }
-
   useEffect(() => {
-    if (isFirstRender.current && query && query.trim().length > 0) {
+    if (
+      isFirstRender.current &&
+      query &&
+      query.trim().length > 0
+    ) {
       append({
         role: 'user',
         content: query
@@ -176,13 +192,16 @@ export function ChatPanel({
 
   const handleFileRemove = useCallback(
     (index: number) => {
-      setUploadedFiles(prev => prev.filter((_, i) => i !== index))
+      setUploadedFiles(prev =>
+        prev.filter((_, i) => i !== index)
+      )
     },
     [setUploadedFiles]
   )
 
   const handleScrollToBottom = () => {
-    const scrollContainer = scrollContainerRef.current
+    const scrollContainer =
+      scrollContainerRef.current
 
     if (scrollContainer) {
       scrollContainer.scrollTo({
@@ -196,30 +215,35 @@ export function ChatPanel({
     <div
       className={cn(
         'w-full bg-background group/form-container shrink-0',
-        messages.length > 0 ? 'sticky bottom-0 px-2 pb-2 md:pb-4' : 'px-6'
+        messages.length > 0
+          ? 'sticky bottom-0 px-2 pb-2 md:pb-4'
+          : 'px-6'
       )}
     >
       {messages.length === 0 && (
         <div className="mb-6 md:mb-10 flex flex-col items-center gap-2 md:gap-4">
-          <IconBlinkingLogo className="size-12 text-white" />
+          <IconBlinkingLogo className="size-12 text-white dark:text-white" />
 
-          <h1 className="text-xl md:text-2xl font-medium text-white">
+          <h1 className="text-xl md:text-2xl font-medium text-foreground">
             What would you like to know?
           </h1>
         </div>
       )}
 
       {uploadedFiles.length > 0 && (
-        <UploadedFileList files={uploadedFiles} onRemove={handleFileRemove} />
+        <UploadedFileList
+          files={uploadedFiles}
+          onRemove={handleFileRemove}
+        />
       )}
 
       <form
         onSubmit={e => {
-          if (!hasAvailableModels) {
+          if (
+            isUsageBlocked ||
+            !hasAvailableModels
+          ) {
             e.preventDefault()
-
-            toast.error('No enabled model is available')
-
             return
           }
 
@@ -229,7 +253,7 @@ export function ChatPanel({
 
           inputRef.current?.blur()
         }}
-        className={cn('max-w-full md:max-w-3xl w-full mx-auto relative')}
+        className="max-w-full md:max-w-3xl w-full mx-auto relative"
       >
         {messages.length > 0 && (
           <div
@@ -246,7 +270,6 @@ export function ChatPanel({
               size="icon"
               className="absolute -top-10 right-0 z-20 size-8 rounded-full shadow-md border-white/10 bg-black/40 backdrop-blur-md"
               onClick={handleScrollToBottom}
-              title="Scroll to bottom"
             >
               <ChevronDown size={16} />
             </Button>
@@ -254,21 +277,15 @@ export function ChatPanel({
         )}
 
         {sections.length > 0 && (
-          <div
-            className={cn(
-              'transition-opacity duration-100',
-              !showScrollToBottomButton && status === 'ready'
-                ? 'opacity-100'
-                : 'pointer-events-none opacity-0'
-            )}
-          >
-            <MessageNavigationDots sections={sections} />
-          </div>
+          <MessageNavigationDots
+            sections={sections}
+          />
         )}
 
         <div
           className={cn(
-            'relative flex flex-col w-full gap-2 bg-[#111111]/95 backdrop-blur-xl rounded-[28px] border border-white/10 shadow-2xl transition-shadow',
+            'relative flex flex-col w-full gap-2 rounded-[28px] border shadow-2xl transition-shadow',
+            'bg-background/95 backdrop-blur-xl border-border',
             isInputFocused &&
               'ring-1 ring-white/20 ring-offset-1 ring-offset-black/50'
           )}
@@ -279,40 +296,36 @@ export function ChatPanel({
             rows={2}
             maxRows={5}
             tabIndex={0}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleCompositionEnd}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
-            placeholder={(() => {
-              const mode = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('searchMode='))
-                ?.split('=')[1]
-
-              if (mode === 'adaptive') {
-                return messages.length > 0
-                  ? 'Continue adaptive chat...'
-                  : 'Ask anything intelligently...'
-              }
-
-              if (mode === 'research') {
-                return messages.length > 0
-                  ? 'Continue research...'
-                  : 'Research on anything...'
-              }
-
-              if (mode === 'image') {
-                return messages.length > 0
-                  ? 'Describe more image details...'
-                  : 'Generate a picture of...'
-              }
-
-              return messages.length > 0 ? 'Reply...' : 'Search anything...'
-            })()}
+            onCompositionStart={
+              handleCompositionStart
+            }
+            onCompositionEnd={
+              handleCompositionEnd
+            }
+            onFocus={() =>
+              setIsInputFocused(true)
+            }
+            onBlur={() =>
+              setIsInputFocused(false)
+            }
+            placeholder={
+              isUsageBlocked
+                ? 'Free limit reached • resets in 6 hours'
+                : messages.length > 0
+                  ? 'Reply...'
+                  : 'Ask anything...'
+            }
             spellCheck={false}
             value={input}
-            disabled={isLoading || isToolInvocationInProgress()}
-            className="resize-none w-full min-h-12 bg-transparent border-0 p-4 md:p-5 text-[15px] text-white placeholder:text-zinc-500 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={
+              isUsageBlocked || isLoading
+            }
+            className={cn(
+              'resize-none w-full min-h-12 bg-transparent border-0 p-4 md:p-5 text-[15px] focus-visible:outline-hidden disabled:cursor-not-allowed',
+              isUsageBlocked
+                ? 'text-red-400 placeholder:text-red-400 opacity-70'
+                : 'text-foreground placeholder:text-muted-foreground'
+            )}
             onChange={handleInputChange}
             onKeyDown={e => {
               if (
@@ -321,14 +334,17 @@ export function ChatPanel({
                 !isComposing &&
                 !enterDisabled
               ) {
-                if (input.trim().length === 0) {
+                if (
+                  input.trim().length === 0
+                ) {
                   e.preventDefault()
                   return
                 }
 
                 e.preventDefault()
 
-                const textarea = e.target as HTMLTextAreaElement
+                const textarea =
+                  e.target as HTMLTextAreaElement
 
                 textarea.form?.requestSubmit()
 
@@ -343,58 +359,7 @@ export function ChatPanel({
             <div className="flex items-center gap-3">
               {!isGuest && (
                 <FileUploadButton
-                  onFileSelect={async files => {
-                    const newFiles: UploadedFile[] = files.map(file => ({
-                      file,
-                      status: 'uploading'
-                    }))
-
-                    setUploadedFiles(prev => [...prev, ...newFiles])
-
-                    await Promise.all(
-                      newFiles.map(async uf => {
-                        const formData = new FormData()
-
-                        formData.append('file', uf.file)
-                        formData.append('chatId', chatId)
-
-                        try {
-                          const res = await fetch('/api/upload', {
-                            method: 'POST',
-                            body: formData
-                          })
-
-                          if (!res.ok) {
-                            throw new Error('Upload failed')
-                          }
-
-                          const { file: uploaded } = await res.json()
-
-                          setUploadedFiles(prev =>
-                            prev.map(f =>
-                              f.file === uf.file
-                                ? {
-                                    ...f,
-                                    status: 'uploaded',
-                                    url: uploaded.url,
-                                    name: uploaded.filename,
-                                    key: uploaded.key
-                                  }
-                                : f
-                            )
-                          )
-                        } catch (e) {
-                          toast.error(`Failed to upload ${uf.file.name}`)
-
-                          setUploadedFiles(prev =>
-                            prev.map(f =>
-                              f.file === uf.file ? { ...f, status: 'error' } : f
-                            )
-                          )
-                        }
-                      })
-                    )
-                  }}
+                  onFileSelect={async () => {}}
                 />
               )}
 
@@ -407,29 +372,29 @@ export function ChatPanel({
                   variant="outline"
                   size="icon"
                   onClick={handleNewChat}
-                  className="shrink-0 size-8 md:size-10 rounded-full group bg-transparent border-white/10 hover:bg-white/10"
+                  className="shrink-0 size-8 md:size-10 rounded-full"
                   type="button"
                   disabled={isLoading}
                 >
-                  <MessageCirclePlus className="size-4 group-hover:rotate-12 transition-all" />
+                  <MessageCirclePlus className="size-4" />
                 </Button>
               )}
 
               <Button
-                type={isLoading ? 'button' : 'submit'}
-                size={'icon'}
-                className={cn(
-                  isLoading && 'animate-pulse',
-                  'size-8 md:size-10 rounded-full bg-white text-black hover:bg-zinc-200 border-0'
-                )}
-                disabled={
-                  (input.length === 0 && !isLoading) || !hasAvailableModels
+                type={
+                  isLoading
+                    ? 'button'
+                    : 'submit'
                 }
-                onClick={isLoading ? stop : undefined}
-                title={
-                  hasAvailableModels
-                    ? undefined
-                    : 'No enabled model is available'
+                size={'icon'}
+                className="size-8 md:size-10 rounded-full bg-black text-white dark:bg-white dark:text-black"
+                disabled={
+                  isUsageBlocked ||
+                  (input.length === 0 &&
+                    !isLoading)
+                }
+                onClick={
+                  isLoading ? stop : undefined
                 }
               >
                 {isLoading ? (
@@ -451,14 +416,13 @@ export function ChatPanel({
 
               setTimeout(() => {
                 inputRef.current?.form?.requestSubmit()
-                setIsInputFocused(false)
-                inputRef.current?.blur()
               }, INPUT_UPDATE_DELAY_MS)
             }}
             onCategoryClick={category => {
               handleInputChange({
                 target: { value: category }
               } as React.ChangeEvent<HTMLTextAreaElement>)
+
               inputRef.current?.focus()
             }}
             inputRef={inputRef}
