@@ -10,7 +10,7 @@ import {
 
 import { cn } from '@/lib/utils'
 
-export type SearchMode =
+type SearchMode =
   | 'quick'
   | 'adaptive'
   | 'research'
@@ -73,13 +73,13 @@ export function SearchModeSelector() {
             type="button"
             onClick={() => handleModeChange(mode.id)}
             className={cn(
-              'relative flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-all duration-300',
+              'relative flex items-center gap-2 rounded-full px-3 py-2 text-xs md:text-sm transition-all duration-300',
               active
-                ? 'bg-gradient-to-r from-violet-500 to-amber-400 text-white shadow-lg'
+                ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-4 w-4 shrink-0" />
 
             <span className="hidden md:block">
               {mode.label}
