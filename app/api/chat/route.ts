@@ -75,6 +75,24 @@ export async function POST(req: Request) {
       taskType
     })
 
+    /*
+      FREE IMAGE LIMIT
+    */
+
+    if (searchMode === 'image') {
+      const imageCount =
+        Number(cookieStore.get('freeImageCount')?.value || '0')
+
+      if (imageCount >= 1) {
+        return new Response(
+          'You have reached your daily free image generation limit.',
+          {
+            status: 429
+          }
+        )
+      }
+    }
+
     if (!selectedModel) {
       return new Response('No enabled model is available', {
         status: 503,
@@ -147,6 +165,17 @@ export async function POST(req: Request) {
 
     if (chatId && !isGuest) {
       revalidateTag(`chat-${chatId}`, 'layout')   // ← FIXED
+    }
+
+    if (searchMode === 'image') {
+      cookieStore.set(
+        'freeImageCount',
+        '1',
+        {
+          maxAge: 60 * 60 * 24,
+          path: '/'
+        }
+      )
     }
 
     return response
