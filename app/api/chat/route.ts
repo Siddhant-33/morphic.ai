@@ -194,7 +194,10 @@ export async function POST(req: Request) {
 
         if (!isGuest && userId) {
           await trackChatEvent({
-            searchMode,
+            searchMode:
+              searchMode === 'research'
+                ? 'adaptive'
+                : searchMode,
             conversationTurn,
             isNewChat: isNewChat ?? false,
             trigger:
