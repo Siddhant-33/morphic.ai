@@ -159,7 +159,7 @@ export function Chat({
             })
           }}
           scrollContainerRef={scrollContainerRef}
-          onUpdateMessage={() => {}}
+          onUpdateMessage={async () => {}}
           reload={() => {}}
           error={error}
         />
