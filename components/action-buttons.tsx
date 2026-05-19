@@ -226,6 +226,58 @@ export function ActionButtons({
             ))}
         </div>
       </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-3xl border border-white/10 bg-black/40 p-5 backdrop-blur-xl">
+          <div className="mb-2 text-lg font-semibold text-white">
+            Free
+          </div>
+
+          <div className="mb-4 text-3xl font-bold text-white">
+            ₹0
+          </div>
+
+          <ul className="space-y-2 text-sm text-zinc-400">
+            <li>• Quick Search</li>
+            <li>• Adaptive AI</li>
+            <li>• 1 Free Image / Day</li>
+          </ul>
+        </div>
+
+        <div className="rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-500/10 to-amber-400/10 p-5 backdrop-blur-xl">
+          <div className="mb-2 text-lg font-semibold text-white">
+            Pro
+          </div>
+
+          <div className="mb-4 text-3xl font-bold text-white">
+            ₹499
+          </div>
+
+          <ul className="space-y-2 text-sm text-zinc-300">
+            <li>• Unlimited Chat</li>
+            <li>• Deep Research</li>
+            <li>• Analyze Mode</li>
+            <li>• Faster Gemini Models</li>
+          </ul>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-black/40 p-5 backdrop-blur-xl">
+          <div className="mb-2 text-lg font-semibold text-white">
+            Ultra
+          </div>
+
+          <div className="mb-4 text-3xl font-bold text-white">
+            ₹999
+          </div>
+
+          <ul className="space-y-2 text-sm text-zinc-400">
+            <li>• Everything in Pro</li>
+            <li>• Unlimited Images</li>
+            <li>• Gemini 3 Priority</li>
+            <li>• Future Premium Models</li>
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }
