@@ -620,6 +620,119 @@ export function ChatPanel({
             className="mt-2"
           />
         )}
+
+        {messages.length > 3 && (
+          <div className="mt-3 w-full max-w-3xl mx-auto">
+            <div className="rounded-3xl border border-border/50 bg-background/80 backdrop-blur-xl p-4 md:p-6 shadow-2xl">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <h3 className="text-lg md:text-xl font-semibold">
+                    You’re using Morphic heavily
+                  </h3>
+
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Upgrade your experience with faster responses, premium tools,
+                    unlimited generations, and priority access.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                    <div className="text-sm font-medium mb-1">
+                      Free
+                    </div>
+
+                    <div className="text-2xl font-bold mb-3">
+                      ₹0
+                    </div>
+
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li>• Standard chat</li>
+                      <li>• Limited image generation</li>
+                      <li>• Basic search</li>
+                    </ul>
+
+                    <button className="mt-4 h-10 w-full rounded-xl border border-border hover:bg-muted transition-all">
+                      Current Plan
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-violet-500/40 bg-violet-500/10 p-4 relative overflow-hidden">
+                    <div className="absolute top-2 right-2 rounded-full bg-violet-500 px-2 py-1 text-[10px] font-semibold text-white">
+                      POPULAR
+                    </div>
+
+                    <div className="text-sm font-medium mb-1">
+                      Pro
+                    </div>
+
+                    <div className="text-2xl font-bold mb-3">
+                      ₹299/mo
+                    </div>
+
+                    <ul className="space-y-2 text-sm">
+                      <li>• Unlimited chats</li>
+                      <li>• Fast image generation</li>
+                      <li>• Deep research mode</li>
+                      <li>• Priority speed</li>
+                    </ul>
+
+                    <button className="mt-4 h-10 w-full rounded-xl bg-white text-black hover:opacity-90 transition-all font-medium">
+                      Select Plan
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-background/70 p-4">
+                    <div className="text-sm font-medium mb-1">
+                      Ultra
+                    </div>
+
+                    <div className="text-2xl font-bold mb-3">
+                      ₹799/mo
+                    </div>
+
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li>• Everything in Pro</li>
+                      <li>• Unlimited images</li>
+                      <li>• Premium AI tools</li>
+                      <li>• Early access features</li>
+                    </ul>
+
+                    <button className="mt-4 h-10 w-full rounded-xl border border-border hover:bg-muted transition-all">
+                      Select Plan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-muted/40 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <div className="font-medium">
+                      Secure Payments
+                    </div>
+
+                    <div className="text-sm text-muted-foreground">
+                      Supports UPI, Debit/Credit Cards and Wallets
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="rounded-lg border border-border px-3 py-2">
+                      UPI
+                    </div>
+
+                    <div className="rounded-lg border border-border px-3 py-2">
+                      VISA
+                    </div>
+
+                    <div className="rounded-lg border border-border px-3 py-2">
+                      Mastercard
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   )
