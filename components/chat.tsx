@@ -33,11 +33,15 @@ export function Chat({
   savedMessages = [],
   query,
   isGuest = false,
+  isCloudDeployment = false,
+  modelSelectorData
 }: {
   id?: string
   savedMessages?: UIMessage[]
   query?: string
   isGuest?: boolean
+  isCloudDeployment?: boolean
+  modelSelectorData?: any
 }) {
   const router = useRouter()
   const [chatId, setChatId] = useState(() => providedId || generateId())
@@ -156,6 +160,8 @@ export function Chat({
 
         <ChatPanel
           chatId={chatId}
+          isCloudDeployment={isCloudDeployment}
+          modelSelectorData={modelSelectorData}
           input={input}
           handleInputChange={handleInputChange}
           handleSubmit={(e) => {
