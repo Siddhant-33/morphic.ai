@@ -94,19 +94,25 @@ export async function POST(req: Request) {
     /*
       FREE IMAGE LIMIT
     */
+    const imageCountCookie =
+      cookieStore.get('image_count')?.value || '0'
 
-    if (searchMode === 'image') {
-      const imageCount =
-        Number(cookieStore.get('freeImageCount')?.value || '0')
+    const imageCount = Number(imageCountCookie)
 
-      if (imageCount >= 1) {
-        return new Response(
-          'You have reached your daily free image generation limit.',
-          {
-            status: 429
+    if (taskType === 'image' && imageCount >= 1) {
+      return new Response(
+        JSON.stringify({
+          error: true,
+          message:
+            'You have reached your daily free image generation limit.'
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json'
           }
-        )
-      }
+        }
+      )
     }
 
     if (!selectedModel) {
@@ -185,8 +191,8 @@ export async function POST(req: Request) {
 
     if (searchMode === 'image') {
       cookieStore.set(
-        'freeImageCount',
-        '1',
+        'image_count',
+        (imageCount + 1).toString(),
         {
           maxAge: 60 * 60 * 24,
           path: '/'
