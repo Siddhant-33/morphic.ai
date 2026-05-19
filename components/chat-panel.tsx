@@ -251,7 +251,7 @@ export function ChatPanel({
     >
       {messages.length === 0 && (
         <div className="mb-6 md:mb-10 flex flex-col items-center gap-2 md:gap-4">
-          <IconBlinkingLogo className="size-12 text-white dark:text-white light:text-black" />
+          <IconBlinkingLogo className="size-12 text-black dark:text-white" />
 
           <h1 className="text-xl md:text-2xl font-medium text-foreground">
             What would you like to know?
@@ -396,17 +396,21 @@ export function ChatPanel({
               {!isGuest && (
                 <FileUploadButton
                   onFileSelect={async files => {
-                    const newFiles =
+                    const newFiles: UploadedFile[] =
                       files.map(file => ({
                         file,
                         status:
-                          'uploading'
+                          'uploading' as const
                       }))
 
-                    setUploadedFiles(prev => [
-                      ...prev,
-                      ...newFiles
-                    ])
+                    setUploadedFiles(
+                      (
+                        prev: UploadedFile[]
+                      ) => [
+                        ...prev,
+                        ...newFiles
+                      ]
+                    )
                   }}
                 />
               )}
@@ -491,3 +495,5 @@ export function ChatPanel({
     </div>
   )
 }
+
+export default ChatPanel
