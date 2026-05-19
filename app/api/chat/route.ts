@@ -34,6 +34,9 @@ export async function POST(req: Request) {
       isNewChat
     } = body
 
+    const totalMessages =
+      Array.isArray(messages) ? messages.length : 0
+
     const referer = req.headers.get('referer')
     const isSharePage = referer?.includes('/share/')
 
@@ -84,6 +87,23 @@ export async function POST(req: Request) {
     let taskType: 'chat' | 'image' | 'research' = 'chat'
     if (searchMode === 'image') taskType = 'image'
     if (searchMode === 'research') taskType = 'research'
+
+    if (totalMessages >= 20) {
+      return new Response(
+        JSON.stringify({
+          error: true,
+          pricingRequired: true,
+          message:
+            'You reached your free usage limit. Please upgrade or wait 6 hours.'
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+    }
 
     const selectedModel: any = await selectModel({
       searchMode,
