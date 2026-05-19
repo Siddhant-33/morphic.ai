@@ -151,7 +151,13 @@ export function Chat({
           status={status}
           chatId={chatId}
           isGuest={isGuest}
-          addToolResult={addToolResult}
+          addToolResult={({ toolCallId, result }) => {
+            addToolResult({
+              tool: 'default',
+              toolCallId,
+              output: result
+            })
+          }}
           scrollContainerRef={scrollContainerRef}
           onUpdateMessage={() => {}}
           reload={() => {}}
