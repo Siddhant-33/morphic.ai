@@ -195,12 +195,11 @@ export async function POST(req: Request) {
         if (!isGuest && userId) {
           await trackChatEvent({
             searchMode:
+              searchMode === 'adaptive' ||
               searchMode === 'research' ||
               searchMode === 'image'
                 ? 'adaptive'
-                : searchMode === 'planning'
-                  ? 'planning'
-                  : 'quick',
+                : 'quick',
             conversationTurn,
             isNewChat: isNewChat ?? false,
             trigger:
