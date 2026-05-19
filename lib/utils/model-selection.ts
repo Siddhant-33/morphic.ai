@@ -40,8 +40,8 @@ const MODELS = {
   },
 
   image: {
-    id: 'gemini-2.0-flash-preview-image-generation',
-    name: 'Imagen',
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash Image',
     provider: 'Google',
     providerId: 'google'
   }
