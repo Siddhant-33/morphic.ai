@@ -5,12 +5,7 @@ import Textarea from 'react-textarea-autosize'
 import { useRouter } from 'next/navigation'
 
 import { UseChatHelpers } from '@ai-sdk/react'
-import {
-  ArrowUp,
-  ChevronDown,
-  MessageCirclePlus,
-  Square
-} from 'lucide-react'
+import { ArrowUp, ChevronDown, MessageCirclePlus, Square } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { SHORTCUT_EVENTS } from '@/lib/keyboard-shortcuts'
@@ -25,7 +20,7 @@ import { IconBlinkingLogo } from './ui/icons'
 import { ActionButtons } from './action-buttons'
 import { FileUploadButton } from './file-upload-button'
 import { MessageNavigationDots } from './message-navigation-dots'
-import SearchModeSelector from './search-mode-selector'
+import { SearchModeSelector } from './search-mode-selector'
 import { UploadedFileList } from './uploaded-file-list'
 
 const INPUT_UPDATE_DELAY_MS = 10
@@ -84,10 +79,6 @@ export function ChatPanel({
   const [enterDisabled, setEnterDisabled] = useState(false)
 
   const [isInputFocused, setIsInputFocused] = useState(false)
-
-  const [activeMode, setActiveMode] = useState<
-    'image' | 'research' | null
-  >(null)
 
   const { close: closeArtifact } = useArtifact()
 
@@ -205,9 +196,9 @@ export function ChatPanel({
     >
       {messages.length === 0 && (
         <div className="mb-6 md:mb-10 flex flex-col items-center gap-2 md:gap-4">
-          <IconBlinkingLogo className="size-12" />
+          <IconBlinkingLogo className="size-12 text-white" />
 
-          <h1 className="text-xl md:text-2xl font-medium text-foreground">
+          <h1 className="text-xl md:text-2xl font-medium text-white">
             What would you like to know?
           </h1>
         </div>
@@ -248,7 +239,7 @@ export function ChatPanel({
               type="button"
               variant="outline"
               size="icon"
-              className="absolute -top-10 right-0 z-20 size-8 rounded-full shadow-md"
+              className="absolute -top-10 right-0 z-20 size-8 rounded-full shadow-md border-white/10 bg-black/40 backdrop-blur-md"
               onClick={handleScrollToBottom}
               title="Scroll to bottom"
             >
@@ -272,9 +263,9 @@ export function ChatPanel({
 
         <div
           className={cn(
-            'relative flex flex-col w-full gap-2 bg-muted rounded-3xl border border-input transition-shadow',
+            'relative flex flex-col w-full gap-2 bg-[#111111]/95 backdrop-blur-xl rounded-[28px] border border-white/10 shadow-2xl transition-shadow',
             isInputFocused &&
-              'ring-1 ring-ring/20 ring-offset-1 ring-offset-background/50'
+              'ring-1 ring-white/20 ring-offset-1 ring-offset-black/50'
           )}
         >
           <Textarea
@@ -291,7 +282,7 @@ export function ChatPanel({
             spellCheck={false}
             value={input}
             disabled={isLoading || isToolInvocationInProgress()}
-            className="resize-none w-full min-h-12 bg-transparent border-0 p-3 md:p-4 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+            className="resize-none w-full min-h-12 bg-transparent border-0 p-4 md:p-5 text-[15px] text-white placeholder:text-zinc-500 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
             onChange={handleInputChange}
             onKeyDown={e => {
               if (
@@ -302,6 +293,7 @@ export function ChatPanel({
               ) {
                 if (input.trim().length === 0) {
                   e.preventDefault()
+
                   return
                 }
 
@@ -319,7 +311,7 @@ export function ChatPanel({
           />
 
           <div className="flex items-center justify-between p-2 md:p-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {!isGuest && (
                 <FileUploadButton
                   onFileSelect={async files => {
@@ -363,7 +355,7 @@ export function ChatPanel({
                                 : f
                             )
                           )
-                        } catch {
+                        } catch (e) {
                           toast.error(`Failed to upload ${uf.file.name}`)
 
                           setUploadedFiles(prev =>
@@ -378,49 +370,7 @@ export function ChatPanel({
                 />
               )}
 
-              <div className="flex items-center gap-1">
-                <SearchModeSelector />
-
-                <button
-                  type="button"
-                  onClick={() => setActiveMode('research')}
-                  className={cn(
-                    'h-8 px-3 rounded-full border text-xs font-medium transition-all duration-200',
-                    activeMode === 'research'
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'bg-background hover:bg-muted border-border text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Deep Research
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveMode('image')}
-                  className={cn(
-                    'h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-200',
-                    activeMode === 'image'
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'bg-background hover:bg-muted border-border text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="9" cy="9" r="2" />
-                    <path d="m21 15-3.5-3.5L5 21" />
-                  </svg>
-                </button>
-              </div>
+              <SearchModeSelector />
             </div>
 
             <div className="flex items-center gap-2">
@@ -429,7 +379,7 @@ export function ChatPanel({
                   variant="outline"
                   size="icon"
                   onClick={handleNewChat}
-                  className="shrink-0 size-8 md:size-10 rounded-full group"
+                  className="shrink-0 size-8 md:size-10 rounded-full group bg-transparent border-white/10 hover:bg-white/10"
                   type="button"
                   disabled={isLoading}
                 >
@@ -442,12 +392,17 @@ export function ChatPanel({
                 size={'icon'}
                 className={cn(
                   isLoading && 'animate-pulse',
-                  'size-8 md:size-10 rounded-full'
+                  'size-8 md:size-10 rounded-full bg-white text-black hover:bg-zinc-200 border-0'
                 )}
                 disabled={
                   (input.length === 0 && !isLoading) || !hasAvailableModels
                 }
                 onClick={isLoading ? stop : undefined}
+                title={
+                  hasAvailableModels
+                    ? undefined
+                    : 'No enabled model is available'
+                }
               >
                 {isLoading ? (
                   <Square className="size-4 md:size-5" />
