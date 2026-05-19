@@ -54,7 +54,23 @@ export async function POST(req: Request) {
       const forwardedFor = req.headers.get('x-forwarded-for') || ''
       const ip = forwardedFor.split(',')[0]?.trim() || req.headers.get('x-real-ip') || null
       const guestLimitResponse = await checkAndEnforceGuestLimit(ip)
-      if (guestLimitResponse) return guestLimitResponse
+
+      if (guestLimitResponse) {
+        return new Response(
+          JSON.stringify({
+            error: true,
+            showPricingModal: true,
+            message:
+              'You have reached your current free usage limit. Upgrade to continue instantly or wait 6 hours for reset.'
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      }
     }
 
     const cookieStore = await cookies()
@@ -164,7 +180,7 @@ export async function POST(req: Request) {
     })()
 
     if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`, 'layout')   // ← FIXED
+      revalidateTag(`chat-${chatId}`)
     }
 
     if (searchMode === 'image') {
