@@ -44,6 +44,27 @@ export async function POST(req: Request) {
     const cookieStore = await cookies()
     const searchMode: SearchMode = (cookieStore.get('searchMode')?.value as SearchMode) || 'quick'
 
+    if (searchMode === 'image') {
+      const imagePrompt =
+        message?.parts
+          ?.map((p: any) =>
+            p?.text ? p.text : ''
+          )
+          .join(' ') || 'Generate image'
+
+      return Response.json({
+        messages: [
+          {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: `![Generated Image](https://image.pollinations.ai/prompt/${encodeURIComponent(
+              imagePrompt
+            )})`
+          }
+        ]
+      })
+    }
+
     const selectedModel: any = await selectModel({
       searchMode,
       cookieStore,
