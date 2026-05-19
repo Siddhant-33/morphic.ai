@@ -103,7 +103,7 @@ export async function POST(req: Request) {
         })
 
     if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`)
+      revalidateTag(`chat-${chatId}`, 'max')
     }
 
     return response
