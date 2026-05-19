@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Textarea from 'react-textarea-autosize'
 import { useRouter } from 'next/navigation'
 
@@ -90,30 +90,12 @@ export function ChatPanel({
   const [enterDisabled, setEnterDisabled] = useState(false)
 
   const [isInputFocused, setIsInputFocused] = useState(false)
+  const [showPricingModal, setShowPricingModal] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState<'pro' | 'ultra' | null>(null)
 
-  const [showPricing, setShowPricing] = useState(false)
-
-  const plans = [
-    {
-      name: 'Free',
-      price: '₹0',
-      icon: Zap,
-      features: ['Gemini Flash Lite', '1 image/day', 'Basic AI']
-    },
-    {
-      name: 'Pro',
-      price: '₹299/mo',
-      icon: Sparkles,
-      popular: true,
-      features: ['Gemini 2.5 Flash', '50 images/day', 'Research mode', 'Priority AI']
-    },
-    {
-      name: 'Ultra',
-      price: '₹999/mo',
-      icon: Crown,
-      features: ['Gemini 3 Flash Preview', 'Unlimited images', 'Deep research', 'Premium speed']
-    }
-  ]
+  const shouldShowPremiumGate = useMemo(() => {
+    return messages.length >= 6
+  }, [messages.length])
 
   const { close: closeArtifact } = useArtifact()
 
@@ -149,6 +131,12 @@ export function ChatPanel({
   }, [setMessages, closeArtifact, onNewChat, router])
 
   const handleNewChatRef = useRef(handleNewChat)
+
+  useEffect(() => {
+    if (messages.length >= 6) {
+      setShowPricingModal(true)
+    }
+  }, [messages.length])
 
   useEffect(() => {
     handleNewChatRef.current = handleNewChat
@@ -222,122 +210,6 @@ export function ChatPanel({
     }
   }
 
-  if (showPricing) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-        <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
-          <div className="border-b border-border bg-gradient-to-br from-violet-500/10 to-amber-500/10 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-semibold">Usage limit reached</h2>
-                <p className="mt-2 text-muted-foreground">
-                  Upgrade your plan to continue using Morphic AI.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShowPricing(false)}
-                className="rounded-xl border border-border px-4 py-2 hover:bg-muted"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-
-          <div className="grid gap-4 p-6 md:grid-cols-3">
-            {plans.map(plan => {
-              const Icon = plan.icon
-
-              return (
-                <div
-                  key={plan.name}
-                  className={cn(
-                    'rounded-3xl border bg-background p-6 transition-all',
-                    plan.popular && 'border-violet-500 shadow-xl'
-                  )}
-                >
-                  <div className="mb-6 flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-amber-400 text-white">
-                      <Icon className="h-6 w-6" />
-                    </div>
-
-                    <div>
-                      <h3 className="text-xl font-semibold">{plan.name}</h3>
-                      <p className="text-muted-foreground">{plan.price}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {plan.features.map(feature => (
-                      <div key={feature} className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-green-500" />
-                        <span className="text-sm text-muted-foreground">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    className={cn(
-                      'mt-6 w-full rounded-2xl py-3 text-sm font-medium',
-                      plan.popular
-                        ? 'bg-gradient-to-r from-violet-500 to-amber-400 text-white'
-                        : 'border border-border bg-muted'
-                    )}
-                  >
-                    Upgrade
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="border-t border-border p-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-3xl border border-border p-6">
-                <div className="mb-4 flex items-center gap-2">
-                  <QrCode className="h-5 w-5" />
-                  <h3 className="text-lg font-semibold">UPI Payment</h3>
-                </div>
-                <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-border bg-muted">
-                  Fake QR Preview
-                </div>
-                <div className="mt-4 rounded-xl bg-muted p-3 text-center font-mono">
-                  morphicai@upi
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-border p-6">
-                <div className="mb-4 flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  <h3 className="text-lg font-semibold">Card Payment</h3>
-                </div>
-                <div className="space-y-4">
-                  <input
-                    placeholder="Card Number"
-                    className="h-12 w-full rounded-2xl border border-border bg-background px-4"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      placeholder="MM/YY"
-                      className="h-12 rounded-2xl border border-border bg-background px-4"
-                    />
-                    <input
-                      placeholder="CVV"
-                      className="h-12 rounded-2xl border border-border bg-background px-4"
-                    />
-                  </div>
-                  <button className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-amber-400 text-white">
-                    Complete Payment
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div
       className={cn(
@@ -357,6 +229,166 @@ export function ChatPanel({
 
       {uploadedFiles.length > 0 && (
         <UploadedFileList files={uploadedFiles} onRemove={handleFileRemove} />
+      )}
+
+      {shouldShowPremiumGate && showPricingModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-xl p-4">
+          <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-background shadow-2xl">
+            <button
+              onClick={() => setShowPricingModal(false)}
+              className="absolute right-4 top-4 z-20 rounded-full border border-border bg-background/80 px-3 py-1 text-sm hover:bg-muted"
+            >
+              Close
+            </button>
+
+            {!selectedPlan ? (
+              <div className="p-5 md:p-8">
+                <div className="mb-8 text-center">
+                  <h2 className="text-3xl font-bold tracking-tight">
+                    Upgrade Your Morphic Experience
+                  </h2>
+
+                  <p className="mt-2 text-muted-foreground">
+                    You’ve reached the free usage limit. Unlock premium AI tools,
+                    faster generations, image creation and advanced research.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-3xl border border-border bg-background/60 p-6">
+                    <div className="mb-4">
+                      <div className="text-sm text-muted-foreground">Free</div>
+
+                      <div className="mt-2 text-4xl font-bold">₹0</div>
+                    </div>
+
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li>• Limited chats</li>
+                      <li>• Limited image generation</li>
+                      <li>• Standard responses</li>
+                    </ul>
+
+                    <button className="mt-6 h-11 w-full rounded-2xl border border-border bg-background hover:bg-muted transition-all">
+                      Current Plan
+                    </button>
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-3xl border border-violet-500/40 bg-violet-500/10 p-6 shadow-xl">
+                    <div className="absolute right-3 top-3 rounded-full bg-violet-500 px-3 py-1 text-xs font-semibold text-white">
+                      MOST POPULAR
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="text-sm text-violet-200">Pro</div>
+
+                      <div className="mt-2 text-4xl font-bold">₹299</div>
+
+                      <div className="text-sm text-muted-foreground">
+                        per month
+                      </div>
+                    </div>
+
+                    <ul className="space-y-3 text-sm">
+                      <li>• Unlimited AI chats</li>
+                      <li>• Deep research</li>
+                      <li>• Advanced analyze mode</li>
+                      <li>• Faster responses</li>
+                      <li>• Premium image generation</li>
+                    </ul>
+
+                    <button
+                      onClick={() => setSelectedPlan('pro')}
+                      className="mt-6 h-11 w-full rounded-2xl bg-white font-semibold text-black hover:opacity-90 transition-all"
+                    >
+                      Select Plan
+                    </button>
+                  </div>
+
+                  <div className="rounded-3xl border border-border bg-background/60 p-6">
+                    <div className="mb-4">
+                      <div className="text-sm text-muted-foreground">Ultra</div>
+
+                      <div className="mt-2 text-4xl font-bold">₹799</div>
+
+                      <div className="text-sm text-muted-foreground">
+                        per month
+                      </div>
+                    </div>
+
+                    <ul className="space-y-3 text-sm text-muted-foreground">
+                      <li>• Everything in Pro</li>
+                      <li>• Unlimited image generation</li>
+                      <li>• Maximum performance</li>
+                      <li>• Early access AI tools</li>
+                      <li>• Priority processing</li>
+                    </ul>
+
+                    <button
+                      onClick={() => setSelectedPlan('ultra')}
+                      className="mt-6 h-11 w-full rounded-2xl border border-border hover:bg-muted transition-all"
+                    >
+                      Select Plan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto max-w-2xl p-5 md:p-8">
+                <h2 className="mb-2 text-3xl font-bold">Complete Your Upgrade</h2>
+
+                <p className="mb-8 text-muted-foreground">
+                  Secure checkout for Morphic{' '}
+                  {selectedPlan === 'pro' ? 'Pro' : 'Ultra'}
+                </p>
+
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <input
+                      placeholder="Full Name"
+                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
+                    />
+
+                    <input
+                      placeholder="Email Address"
+                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
+                    />
+                  </div>
+
+                  <input
+                    placeholder="Card Number"
+                    className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <input
+                      placeholder="MM/YY"
+                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
+                    />
+
+                    <input
+                      placeholder="CVV"
+                      className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
+                    />
+                  </div>
+
+                  <input
+                    placeholder="UPI ID (optional)"
+                    className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
+                  />
+
+                  <input
+                    placeholder="Billing Address"
+                    className="h-12 rounded-2xl border border-border bg-background px-4 outline-none"
+                  />
+
+                  <button className="mt-4 h-12 rounded-2xl bg-white font-semibold text-black transition-all hover:opacity-90">
+                    Pay Securely
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <form
@@ -429,36 +461,32 @@ export function ChatPanel({
             onCompositionEnd={handleCompositionEnd}
             onFocus={() => setIsInputFocused(true)}
             onBlur={() => setIsInputFocused(false)}
-            placeholder={
-              (() => {
-                const mode = document.cookie
-                  .split('; ')
-                  .find(row => row.startsWith('searchMode='))
-                  ?.split('=')[1]
+            placeholder={(() => {
+              const mode = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('searchMode='))
+                ?.split('=')[1]
 
-                if (mode === 'adaptive') {
-                  return messages.length > 0
-                    ? 'Continue adaptive chat...'
-                    : 'Ask anything intelligently...'
-                }
-
-                if (mode === 'research') {
-                  return messages.length > 0
-                    ? 'Continue research...'
-                    : 'Research on anything...'
-                }
-
-                if (mode === 'image') {
-                  return messages.length > 0
-                    ? 'Describe more image details...'
-                    : 'Generate a picture of...'
-                }
-
+              if (mode === 'adaptive') {
                 return messages.length > 0
-                  ? 'Reply...'
-                  : 'Search anything...'
-              })()
-            }
+                  ? 'Continue adaptive chat...'
+                  : 'Ask anything intelligently...'
+              }
+
+              if (mode === 'research') {
+                return messages.length > 0
+                  ? 'Continue research...'
+                  : 'Research on anything...'
+              }
+
+              if (mode === 'image') {
+                return messages.length > 0
+                  ? 'Describe more image details...'
+                  : 'Generate a picture of...'
+              }
+
+              return messages.length > 0 ? 'Reply...' : 'Search anything...'
+            })()}
             spellCheck={false}
             value={input}
             disabled={isLoading || isToolInvocationInProgress()}
@@ -619,119 +647,6 @@ export function ChatPanel({
             inputRef={inputRef}
             className="mt-2"
           />
-        )}
-
-        {messages.length > 3 && (
-          <div className="mt-3 w-full max-w-3xl mx-auto">
-            <div className="rounded-3xl border border-border/50 bg-background/80 backdrop-blur-xl p-4 md:p-6 shadow-2xl">
-              <div className="flex flex-col gap-4">
-                <div>
-                  <h3 className="text-lg md:text-xl font-semibold">
-                    You’re using Morphic heavily
-                  </h3>
-
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Upgrade your experience with faster responses, premium tools,
-                    unlimited generations, and priority access.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="rounded-2xl border border-border bg-background/70 p-4">
-                    <div className="text-sm font-medium mb-1">
-                      Free
-                    </div>
-
-                    <div className="text-2xl font-bold mb-3">
-                      ₹0
-                    </div>
-
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li>• Standard chat</li>
-                      <li>• Limited image generation</li>
-                      <li>• Basic search</li>
-                    </ul>
-
-                    <button className="mt-4 h-10 w-full rounded-xl border border-border hover:bg-muted transition-all">
-                      Current Plan
-                    </button>
-                  </div>
-
-                  <div className="rounded-2xl border border-violet-500/40 bg-violet-500/10 p-4 relative overflow-hidden">
-                    <div className="absolute top-2 right-2 rounded-full bg-violet-500 px-2 py-1 text-[10px] font-semibold text-white">
-                      POPULAR
-                    </div>
-
-                    <div className="text-sm font-medium mb-1">
-                      Pro
-                    </div>
-
-                    <div className="text-2xl font-bold mb-3">
-                      ₹299/mo
-                    </div>
-
-                    <ul className="space-y-2 text-sm">
-                      <li>• Unlimited chats</li>
-                      <li>• Fast image generation</li>
-                      <li>• Deep research mode</li>
-                      <li>• Priority speed</li>
-                    </ul>
-
-                    <button className="mt-4 h-10 w-full rounded-xl bg-white text-black hover:opacity-90 transition-all font-medium">
-                      Select Plan
-                    </button>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-background/70 p-4">
-                    <div className="text-sm font-medium mb-1">
-                      Ultra
-                    </div>
-
-                    <div className="text-2xl font-bold mb-3">
-                      ₹799/mo
-                    </div>
-
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li>• Everything in Pro</li>
-                      <li>• Unlimited images</li>
-                      <li>• Premium AI tools</li>
-                      <li>• Early access features</li>
-                    </ul>
-
-                    <button className="mt-4 h-10 w-full rounded-xl border border-border hover:bg-muted transition-all">
-                      Select Plan
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-muted/40 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div>
-                    <div className="font-medium">
-                      Secure Payments
-                    </div>
-
-                    <div className="text-sm text-muted-foreground">
-                      Supports UPI, Debit/Credit Cards and Wallets
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <div className="rounded-lg border border-border px-3 py-2">
-                      UPI
-                    </div>
-
-                    <div className="rounded-lg border border-border px-3 py-2">
-                      VISA
-                    </div>
-
-                    <div className="rounded-lg border border-border px-3 py-2">
-                      Mastercard
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         )}
       </form>
     </div>
