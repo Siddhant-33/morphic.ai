@@ -138,6 +138,71 @@ export async function POST(req: Request) {
       if (overallLimitResponse) return overallLimitResponse
     }
 
+    if (searchMode === 'image') {
+      const imagePrompt =
+        typeof message === 'string'
+          ? message
+          : messages?.[messages.length - 1]?.content || ''
+
+      const imageResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: imagePrompt
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              responseModalities: ['TEXT', 'IMAGE']
+            }
+          })
+        }
+      )
+
+      const data = await imageResponse.json()
+
+      const imageData =
+        data?.candidates?.[0]?.content?.parts?.find(
+          (p: any) => p.inlineData
+        )?.inlineData?.data
+
+      if (!imageData) {
+        return new Response(
+          JSON.stringify({
+            error: true,
+            message: 'Image generation failed'
+          }),
+          {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({
+          image:
+            `data:image/png;base64,${imageData}`
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+    }
+
     const response = isGuest
       ? await createEphemeralChatStreamResponse({
           messages: Array.isArray(messages) ? messages : [],
