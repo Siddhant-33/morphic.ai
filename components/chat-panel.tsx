@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Textarea from 'react-textarea-autosize'
 import { useRouter } from 'next/navigation'
 
@@ -323,7 +323,6 @@ export function ChatPanel({
               ) {
                 if (input.trim().length === 0) {
                   e.preventDefault()
-
                   return
                 }
 
@@ -357,7 +356,6 @@ export function ChatPanel({
                         const formData = new FormData()
 
                         formData.append('file', uf.file)
-
                         formData.append('chatId', chatId)
 
                         try {
@@ -453,9 +451,7 @@ export function ChatPanel({
 
               setTimeout(() => {
                 inputRef.current?.form?.requestSubmit()
-
                 setIsInputFocused(false)
-
                 inputRef.current?.blur()
               }, INPUT_UPDATE_DELAY_MS)
             }}
@@ -463,7 +459,6 @@ export function ChatPanel({
               handleInputChange({
                 target: { value: category }
               } as React.ChangeEvent<HTMLTextAreaElement>)
-
               inputRef.current?.focus()
             }}
             inputRef={inputRef}
