@@ -11,6 +11,7 @@ import {
   MessageCirclePlus,
   Square
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { SHORTCUT_EVENTS } from '@/lib/keyboard-shortcuts'
 import { UploadedFile } from '@/lib/types'
@@ -61,7 +62,6 @@ interface ChatPanelProps {
   isCloudDeployment?: boolean
   modelSelectorData?: ModelSelectorData
   sections?: { id: string; userMessage: UIMessage }[]
-  isUsageBlocked?: boolean
 }
 
 export function ChatPanel({
@@ -83,12 +83,12 @@ export function ChatPanel({
   isGuest = false,
   isCloudDeployment = false,
   modelSelectorData,
-  sections = [],
-  isUsageBlocked = false
+  sections = []
 }: ChatPanelProps) {
   const router = useRouter()
 
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef =
+    useRef<HTMLTextAreaElement>(null)
 
   const isFirstRender = useRef(true)
 
@@ -175,6 +175,35 @@ export function ChatPanel({
     }
   }, [])
 
+  const isToolInvocationInProgress = () => {
+    if (!messages.length) return false
+
+    const lastMessage =
+      messages[messages.length - 1]
+
+    if (
+      lastMessage.role !== 'assistant' ||
+      !lastMessage.parts
+    )
+      return false
+
+    const parts = lastMessage.parts
+
+    const lastPart =
+      parts[parts.length - 1]
+
+    return (
+      (lastPart?.type === 'tool-search' ||
+        lastPart?.type === 'tool-fetch' ||
+        lastPart?.type ===
+          'tool-askQuestion') &&
+      ((lastPart as any)?.state ===
+        'input-streaming' ||
+        (lastPart as any)?.state ===
+          'input-available')
+    )
+  }
+
   useEffect(() => {
     if (
       isFirstRender.current &&
@@ -222,7 +251,7 @@ export function ChatPanel({
     >
       {messages.length === 0 && (
         <div className="mb-6 md:mb-10 flex flex-col items-center gap-2 md:gap-4">
-          <IconBlinkingLogo className="size-12 text-white dark:text-white" />
+          <IconBlinkingLogo className="size-12 text-white dark:text-white light:text-black" />
 
           <h1 className="text-xl md:text-2xl font-medium text-foreground">
             What would you like to know?
@@ -239,11 +268,13 @@ export function ChatPanel({
 
       <form
         onSubmit={e => {
-          if (
-            isUsageBlocked ||
-            !hasAvailableModels
-          ) {
+          if (!hasAvailableModels) {
             e.preventDefault()
+
+            toast.error(
+              'No enabled model is available'
+            )
+
             return
           }
 
@@ -268,8 +299,9 @@ export function ChatPanel({
               type="button"
               variant="outline"
               size="icon"
-              className="absolute -top-10 right-0 z-20 size-8 rounded-full shadow-md border-white/10 bg-black/40 backdrop-blur-md"
+              className="absolute -top-10 right-0 z-20 size-8 rounded-full shadow-md border-border bg-background/70 backdrop-blur-md"
               onClick={handleScrollToBottom}
+              title="Scroll to bottom"
             >
               <ChevronDown size={16} />
             </Button>
@@ -277,17 +309,26 @@ export function ChatPanel({
         )}
 
         {sections.length > 0 && (
-          <MessageNavigationDots
-            sections={sections}
-          />
+          <div
+            className={cn(
+              'transition-opacity duration-100',
+              !showScrollToBottomButton &&
+                status === 'ready'
+                ? 'opacity-100'
+                : 'pointer-events-none opacity-0'
+            )}
+          >
+            <MessageNavigationDots
+              sections={sections}
+            />
+          </div>
         )}
 
         <div
           className={cn(
-            'relative flex flex-col w-full gap-2 rounded-[28px] border shadow-2xl transition-shadow',
-            'bg-background/95 backdrop-blur-xl border-border',
+            'relative flex flex-col w-full gap-2 bg-background/95 backdrop-blur-xl rounded-[28px] border border-border shadow-2xl transition-shadow',
             isInputFocused &&
-              'ring-1 ring-white/20 ring-offset-1 ring-offset-black/50'
+              'ring-1 ring-primary/20 ring-offset-1'
           )}
         >
           <Textarea
@@ -309,23 +350,17 @@ export function ChatPanel({
               setIsInputFocused(false)
             }
             placeholder={
-              isUsageBlocked
-                ? 'Free limit reached • resets in 6 hours'
-                : messages.length > 0
-                  ? 'Reply...'
-                  : 'Ask anything...'
+              messages.length > 0
+                ? 'Reply...'
+                : 'Ask anything...'
             }
             spellCheck={false}
             value={input}
             disabled={
-              isUsageBlocked || isLoading
+              isLoading ||
+              isToolInvocationInProgress()
             }
-            className={cn(
-              'resize-none w-full min-h-12 bg-transparent border-0 p-4 md:p-5 text-[15px] focus-visible:outline-hidden disabled:cursor-not-allowed',
-              isUsageBlocked
-                ? 'text-red-400 placeholder:text-red-400 opacity-70'
-                : 'text-foreground placeholder:text-muted-foreground'
-            )}
+            className="resize-none w-full min-h-12 bg-transparent border-0 p-4 md:p-5 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
             onChange={handleInputChange}
             onKeyDown={e => {
               if (
@@ -338,6 +373,7 @@ export function ChatPanel({
                   input.trim().length === 0
                 ) {
                   e.preventDefault()
+
                   return
                 }
 
@@ -359,7 +395,19 @@ export function ChatPanel({
             <div className="flex items-center gap-3">
               {!isGuest && (
                 <FileUploadButton
-                  onFileSelect={async () => {}}
+                  onFileSelect={async files => {
+                    const newFiles =
+                      files.map(file => ({
+                        file,
+                        status:
+                          'uploading'
+                      }))
+
+                    setUploadedFiles(prev => [
+                      ...prev,
+                      ...newFiles
+                    ])
+                  }}
                 />
               )}
 
@@ -372,11 +420,11 @@ export function ChatPanel({
                   variant="outline"
                   size="icon"
                   onClick={handleNewChat}
-                  className="shrink-0 size-8 md:size-10 rounded-full"
+                  className="shrink-0 size-8 md:size-10 rounded-full group bg-transparent border-border hover:bg-muted"
                   type="button"
                   disabled={isLoading}
                 >
-                  <MessageCirclePlus className="size-4" />
+                  <MessageCirclePlus className="size-4 group-hover:rotate-12 transition-all" />
                 </Button>
               )}
 
@@ -387,14 +435,20 @@ export function ChatPanel({
                     : 'submit'
                 }
                 size={'icon'}
-                className="size-8 md:size-10 rounded-full bg-black text-white dark:bg-white dark:text-black"
+                className={cn(
+                  isLoading &&
+                    'animate-pulse',
+                  'size-8 md:size-10 rounded-full bg-primary text-primary-foreground hover:opacity-90 border-0'
+                )}
                 disabled={
-                  isUsageBlocked ||
                   (input.length === 0 &&
-                    !isLoading)
+                    !isLoading) ||
+                  !hasAvailableModels
                 }
                 onClick={
-                  isLoading ? stop : undefined
+                  isLoading
+                    ? stop
+                    : undefined
                 }
               >
                 {isLoading ? (
@@ -416,6 +470,10 @@ export function ChatPanel({
 
               setTimeout(() => {
                 inputRef.current?.form?.requestSubmit()
+
+                setIsInputFocused(false)
+
+                inputRef.current?.blur()
               }, INPUT_UPDATE_DELAY_MS)
             }}
             onCategoryClick={category => {
