@@ -49,7 +49,7 @@ async function checkGuestLimit(ip: string): Promise<{
     })
 
     const dateKey = new Date().toISOString().split('T')[0]
-    const key = `rl:guest:chat:${ip}:${dateKey}`
+    const key = `rl:guest:chat:${ip || 'anonymous'}:${dateKey}`
     const count = await Promise.race([
       redis.incr(key),
       new Promise<number>((_, reject) =>
@@ -87,19 +87,14 @@ export async function checkAndEnforceGuestLimit(
   if (!result.allowed) {
     return new Response(
       JSON.stringify({
-        error: 'Please sign in to continue.',
-        remaining: 0,
-        resetAt: result.resetAt,
-        limit: result.limit
+        error: 'FREE_LIMIT_REACHED',
+        message:
+          'Free limit reached. Upgrade to Pro for unlimited chats and image generation.'
       }),
       {
-        status: 401,
-        statusText: 'Unauthorized',
+        status: 429,
         headers: {
-          'Content-Type': 'application/json',
-          'X-RateLimit-Limit': String(result.limit),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': String(result.resetAt)
+          'Content-Type': 'application/json'
         }
       }
     )
