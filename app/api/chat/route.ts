@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       const ip =
         forwardedFor.split(',')[0]?.trim() ||
         req.headers.get('x-real-ip') ||
-        null
+        crypto.randomUUID()
       const guestLimitResponse = await checkAndEnforceGuestLimit(ip)
       if (guestLimitResponse) return guestLimitResponse
     }
