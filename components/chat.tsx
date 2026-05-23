@@ -164,8 +164,16 @@ export function Chat({
           message: error.message
         })
       } else {
-        // For general errors, still use toast for less intrusive notification
-        toast.error(`Error in chat: ${error.message}`)
+        // For general errors, replace standard toast with friendly message
+        const cleanMessage =
+          msg.includes('quota') ||
+          msg.includes('rate limit') ||
+          msg.includes('429') ||
+          msg.includes('generate_content_free_tier_requests')
+            ? 'AI servers are currently busy. Please try again in a few moments.'
+            : 'Something went wrong. Please try again.'
+
+        toast.error(cleanMessage)
       }
     },
     experimental_throttle: 100,
