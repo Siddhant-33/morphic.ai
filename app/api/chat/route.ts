@@ -74,12 +74,7 @@ export async function POST(req: Request) {
     }
 
     if (isGuest) {
-      const forwardedFor = req.headers.get('x-forwarded-for') || ''
-      const ip =
-        forwardedFor.split(',')[0]?.trim() ||
-        req.headers.get('x-real-ip') ||
-        crypto.randomUUID()
-      const guestLimitResponse = await checkAndEnforceGuestLimit(ip)
+      const guestLimitResponse = await checkAndEnforceGuestLimit()
       if (guestLimitResponse) return guestLimitResponse
     }
 
@@ -231,11 +226,45 @@ export async function POST(req: Request) {
     perfLog(`================`)
 
     return response
-  } catch (error) {
+  } catch (error: any) {
     console.error('API route error:', error)
-    return new Response('Error processing your request', {
-      status: 500,
-      statusText: 'Internal Server Error'
-    })
+
+    const errorMessage =
+      error?.message || 'Something went wrong. Please try again.'
+
+    // Gemini quota exceeded
+    if (
+      errorMessage.includes('quota') ||
+      errorMessage.includes('429') ||
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('generate_content_free_tier_requests')
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: 'FREE_LIMIT_REACHED',
+          message:
+            'Free plan limit reached. Upgrade to Pro for unlimited AI chats and image generation.'
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+    }
+
+    return new Response(
+      JSON.stringify({
+        error: 'SERVER_ERROR',
+        message: 'Something went wrong. Please try again later.'
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
   }
 }
