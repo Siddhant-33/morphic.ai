@@ -27,7 +27,7 @@ function getNextMidnightTimestamp(): number {
   return midnight.getTime()
 }
 
-async function checkGuestLimit(ip: string): Promise<{
+async function checkGuestLimit(): Promise<{
   allowed: boolean
   remaining: number
   resetAt: number
@@ -51,8 +51,8 @@ async function checkGuestLimit(ip: string): Promise<{
     })
 
     const dateKey = new Date().toISOString().split('T')[0]
-    const safeIp = ip?.replace(/[^a-zA-Z0-9.:_-]/g, '_')
-    const key = `rl:guest:chat:${safeIp}:${dateKey}`
+    const guestId = crypto.randomUUID()
+    const key = `rl:guest:chat:${guestId}:${dateKey}`
     
     // Increment request count
     const count = await Promise.race([
@@ -83,12 +83,8 @@ async function checkGuestLimit(ip: string): Promise<{
   }
 }
 
-export async function checkAndEnforceGuestLimit(
-  ip: string | null
-): Promise<Response | null> {
-  if (!ip) return null
-
-  const result = await checkGuestLimit(ip)
+export async function checkAndEnforceGuestLimit(): Promise<Response | null> {
+  const result = await checkGuestLimit()
   if (!result.allowed) {
     return new Response(
       JSON.stringify({
