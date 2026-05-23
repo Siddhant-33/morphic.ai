@@ -51,7 +51,8 @@ async function checkGuestLimit(ip: string): Promise<{
     })
 
     const dateKey = new Date().toISOString().split('T')[0]
-    const key = `rl:guest:chat:${ip || 'anonymous'}:${dateKey}`
+    const safeIp = ip?.replace(/[^a-zA-Z0-9.:_-]/g, '_')
+    const key = `rl:guest:chat:${safeIp}:${dateKey}`
     
     // Increment request count
     const count = await Promise.race([
