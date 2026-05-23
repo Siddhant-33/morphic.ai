@@ -140,7 +140,11 @@ export function Chat({
         msg.includes('authentication required') ||
         msg.includes('sign in to continue')
 
-      if (msg.includes('429') || msg.includes('limit')) {
+      if (
+        msg.includes('429') ||
+        msg.includes('limit') ||
+        msg.includes('free_limit_reached')
+      ) {
         setErrorModal({
           open: true,
           type: 'rate-limit',
