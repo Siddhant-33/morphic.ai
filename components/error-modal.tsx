@@ -38,6 +38,8 @@ export function ErrorModal({
     onAuthClose?.()
   }
 
+  const RAZORPAY_URL = 'https://pages.razorpay.com/pl_Qc7Jp123456789/view'
+
   const getErrorIcon = () => {
     switch (error.type) {
       case 'rate-limit':
@@ -110,12 +112,13 @@ export function ErrorModal({
           <DialogDescription className="text-center text-muted-foreground">
             {getErrorDescription()}
           </DialogDescription>
-          {getErrorDetails() && (
+          {getErrorDetails() && error.type !== 'rate-limit' && (
             <div className="mt-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
               {getErrorDetails()}
             </div>
           )}
         </DialogHeader>
+
         <DialogFooter className="flex-col gap-2">
           {error.type === 'auth' ? (
             <>
@@ -128,27 +131,59 @@ export function ErrorModal({
             </>
           ) : (
             <>
-              {onRetry && error.type !== 'rate-limit' && (
-                <Button
-                  onClick={() => {
-                    onRetry()
-                    onOpenChange(false)
-                  }}
-                  className="w-full"
-                >
-                  <RefreshCw className="mr-2 size-4" />
-                  Try Again
-                </Button>
+              {error.type === 'rate-limit' ? (
+                <div className="w-full space-y-3">
+                  <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 p-4">
+                    <h3 className="mb-1 text-lg font-semibold text-white">
+                      Upgrade Your Plan
+                    </h3>
+                    <p className="mb-4 text-sm text-zinc-400">
+                      You reached the free usage limit. Upgrade for unlimited AI chats,
+                      image generation, and premium models.
+                    </p>
+                    <div className="grid gap-3">
+                      <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-white">Pro</div>
+                            <div className="text-xs text-zinc-400">Unlimited chats + images</div>
+                          </div>
+                          <div className="text-lg font-bold text-white">₹499</div>
+                        </div>
+                        <Button asChild className="mt-3 w-full rounded-xl bg-violet-600 hover:bg-violet-700">
+                          <Link href={RAZORPAY_URL} target="_blank">Upgrade to Pro</Link>
+                        </Button>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-white">Ultra</div>
+                            <div className="text-xs text-zinc-400">Everything unlocked</div>
+                          </div>
+                          <div className="text-lg font-bold text-white">₹999</div>
+                        </div>
+                        <Button asChild variant="secondary" className="mt-3 w-full rounded-xl">
+                          <Link href={RAZORPAY_URL} target="_blank">Get Ultra</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
+                    Maybe Later
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {onRetry && (
+                    <Button onClick={() => { onRetry(); onOpenChange(false); }} className="w-full">
+                      <RefreshCw className="mr-2 size-4" /> Try Again
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
+                    Close
+                  </Button>
+                </>
               )}
-              <Button
-                variant={
-                  onRetry && error.type !== 'rate-limit' ? 'outline' : 'default'
-                }
-                onClick={() => onOpenChange(false)}
-                className="w-full"
-              >
-                {error.type === 'rate-limit' ? 'Understood' : 'Close'}
-              </Button>
             </>
           )}
         </DialogFooter>
