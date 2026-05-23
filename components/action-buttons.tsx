@@ -129,7 +129,6 @@ export function ActionButtons({
         !containerRef.current.contains(e.target as Node)
       ) {
         if (activeCategory) {
-          // Check if click is not on the input field
           if (!inputRef?.current?.contains(e.target as Node)) {
             resetToButtons()
           }
@@ -138,7 +137,6 @@ export function ActionButtons({
     }
 
     const handleFocusOut = () => {
-      // Check if focus is moving outside both the container and input
       setTimeout(() => {
         const activeElement = document.activeElement
         if (
@@ -162,7 +160,6 @@ export function ActionButtons({
     }
   }, [activeCategory, inputRef])
 
-  // Calculate max height needed for samples (4 items * ~40px + padding)
   const containerHeight = 'h-[180px]'
 
   return (
@@ -171,7 +168,6 @@ export function ActionButtons({
       className={cn('relative', containerHeight, className)}
     >
       <div className="relative h-full">
-        {/* Action buttons */}
         <div
           className={cn(
             'absolute inset-0 flex items-start justify-center pt-2 transition-opacity duration-300',
@@ -201,7 +197,6 @@ export function ActionButtons({
           </div>
         </div>
 
-        {/* Prompt samples */}
         <div
           className={cn(
             'absolute inset-0 py-1 space-y-1 overflow-y-auto transition-opacity duration-300',
