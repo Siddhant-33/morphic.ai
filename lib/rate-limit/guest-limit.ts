@@ -51,7 +51,8 @@ async function checkGuestLimit(): Promise<{
     })
 
     const dateKey = new Date().toISOString().split('T')[0]
-    const guestId = crypto.randomUUID()
+    const guestId =
+      crypto.randomUUID?.() || Math.random().toString(36).slice(2)
     const key = `rl:guest:chat:${guestId}:${dateKey}`
     
     // Increment request count
