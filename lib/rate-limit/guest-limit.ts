@@ -1,12 +1,14 @@
 import { Redis } from '@upstash/redis'
 
-const DEFAULT_GUEST_DAILY_LIMIT = 10
+// Limits
+const GUEST_DAILY_CHAT_LIMIT = 6
+const GUEST_DAILY_IMAGE_LIMIT = 1
 
 function getGuestDailyLimit(): number {
   const raw = process.env.GUEST_CHAT_DAILY_LIMIT
-  const parsed = raw ? Number(raw) : DEFAULT_GUEST_DAILY_LIMIT
+  const parsed = raw ? Number(raw) : GUEST_DAILY_CHAT_LIMIT
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    return DEFAULT_GUEST_DAILY_LIMIT
+    return GUEST_DAILY_CHAT_LIMIT
   }
   return Math.floor(parsed)
 }
@@ -50,6 +52,8 @@ async function checkGuestLimit(ip: string): Promise<{
 
     const dateKey = new Date().toISOString().split('T')[0]
     const key = `rl:guest:chat:${ip || 'anonymous'}:${dateKey}`
+    
+    // Increment request count
     const count = await Promise.race([
       redis.incr(key),
       new Promise<number>((_, reject) =>
@@ -94,7 +98,10 @@ export async function checkAndEnforceGuestLimit(
       {
         status: 429,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-RateLimit-Limit': String(result.limit),
+          'X-RateLimit-Remaining': String(result.remaining),
+          'X-RateLimit-Reset': String(result.resetAt)
         }
       }
     )
