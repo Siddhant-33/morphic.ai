@@ -133,49 +133,19 @@ export function Chat({
       window.dispatchEvent(new CustomEvent('chat-history-updated'))
     },
     onError: error => {
-      // Handle rate limiting errors from Vercel WAF
-      // Check for status codes in error message or specific rate limit indicators
-      const errorMessage = error.message?.toLowerCase() || ''
-      const isRateLimit =
-        error.message?.includes('429') ||
-        errorMessage.includes('rate limit') ||
-        errorMessage.includes('too many requests') ||
-        errorMessage.includes('daily limit')
-
-      // Check for authentication errors
+      const msg = error.message?.toLowerCase() || ''
       const isAuthError =
         error.message?.includes('401') ||
-        errorMessage.includes('unauthorized') ||
-        errorMessage.includes('authentication required') ||
-        errorMessage.includes('sign in to continue')
+        msg.includes('unauthorized') ||
+        msg.includes('authentication required') ||
+        msg.includes('sign in to continue')
 
-      if (isRateLimit) {
-        // Try to parse JSON error response for quality mode rate limit
-        let parsedError: {
-          error?: string
-          resetAt?: number
-          remaining?: number
-        } = {}
-        try {
-          // Extract JSON from error message if it exists
-          const jsonMatch = error.message?.match(/\{.*\}/)
-          if (jsonMatch) {
-            parsedError = JSON.parse(jsonMatch[0])
-          }
-        } catch {
-          // Ignore parse errors
-        }
-
-        // Use parsed error message or fallback
-        const userMessage =
-          parsedError.error ||
-          'You have reached your daily limit for quality mode chat requests.'
-
+      if (msg.includes('429') || msg.includes('limit')) {
         setErrorModal({
           open: true,
           type: 'rate-limit',
-          message: userMessage,
-          details: undefined
+          message:
+            'Free limit reached. Upgrade to Pro for unlimited chats and image generation.'
         })
       } else if (isAuthError) {
         setErrorModal({
@@ -183,10 +153,7 @@ export function Chat({
           type: 'auth',
           message: error.message
         })
-      } else if (
-        error.message?.includes('403') ||
-        errorMessage.includes('forbidden')
-      ) {
+      } else if (error.message?.includes('403') || msg.includes('forbidden')) {
         setErrorModal({
           open: true,
           type: 'forbidden',
@@ -237,9 +204,6 @@ export function Chat({
   }, [messages])
 
   // Listen for copy message shortcut
-  // Uses ref to avoid re-registering listener on every messages change.
-  // Uses defaultPrevented + visibility check to prevent duplicate handling
-  // when multiple Chat instances are mounted (Next.js component caching).
   const messagesRef = useRef(messages)
   useEffect(() => {
     messagesRef.current = messages
@@ -354,7 +318,6 @@ export function Chat({
   ) => {
     if (!chatId) {
       toast.error('Chat ID is missing.')
-      console.error('handleUpdateAndReloadMessage: chatId is undefined.')
       return
     }
 
@@ -429,7 +392,6 @@ export function Chat({
       setUploadedFiles([])
 
       // Push URL state immediately after sending message (for new chats)
-      // Check if we're on the root path (new chat)
       if (!isGuest && window.location.pathname === '/') {
         window.history.pushState({}, '', `/search/${chatId}`)
       }
@@ -482,10 +444,8 @@ export function Chat({
             toolCallId: string
             result: any
           }) => {
-            // Find the tool name from the message parts
             let toolName = 'unknown'
 
-            // Optimize by breaking early once found
             outerLoop: for (const message of messages) {
               if (!message.parts) continue
 
@@ -497,7 +457,7 @@ export function Chat({
                   isToolTypePart(part) &&
                   part.toolCallId === toolCallId
                 ) {
-                  toolName = part.type.substring(5) // Remove 'tool-' prefix
+                  toolName = part.type.substring(5)
                   break outerLoop
                 } else if (
                   isDynamicToolPart(part) &&
@@ -547,7 +507,6 @@ export function Chat({
           onRetry={
             errorModal.type !== 'rate-limit'
               ? () => {
-                  // Retry the last message if not rate limited
                   if (messages.length > 0) {
                     const lastUserMessage = messages
                       .filter(m => m.role === 'user')
@@ -560,7 +519,6 @@ export function Chat({
               : undefined
           }
           onAuthClose={() => {
-            // Clear messages and navigate to root
             setMessages([])
             router.push('/')
           }}
