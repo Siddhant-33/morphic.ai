@@ -1,5 +1,6 @@
 import { revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
 
 import { loadChat } from '@/lib/actions/chat'
 import { calculateConversationTurn, trackChatEvent } from '@/lib/analytics'
@@ -15,6 +16,42 @@ import { resetAllCounters } from '@/lib/utils/perf-tracking'
 import { isProviderEnabled } from '@/lib/utils/registry'
 
 export const maxDuration = 300
+
+function isGeminiQuotaError(err: unknown): boolean {
+  const msg = String(err).toLowerCase()
+
+  return (
+    msg.includes('quota') ||
+    msg.includes('429') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('free_tier') ||
+    msg.includes('rate limit') ||
+    msg.includes('billing')
+  )
+}
+
+function cleanError(err: unknown): NextResponse {
+  console.error('[AI ERROR]', err)
+
+  if (isGeminiQuotaError(err)) {
+    return NextResponse.json(
+      {
+        error: 'RATE_LIMIT',
+        message: 'You have reached our free limit, Please contact the owner.',
+        showPricing: false
+      },
+      { status: 429 }
+    )
+  }
+
+  return NextResponse.json(
+    {
+      error: 'AI_ERROR',
+      message: 'Something went wrong. Please try again.'
+    },
+    { status: 500 }
+  )
+}
 
 export async function POST(req: Request) {
   const startTime = performance.now()
@@ -231,47 +268,7 @@ export async function POST(req: Request) {
     perfLog(`================`)
 
     return response
-  } catch (error: any) {
-    console.error('API route error:', error)
-
-    const errorMessage =
-      typeof error?.message === 'string'
-        ? error.message.toLowerCase()
-        : ''
-
-    if (
-      errorMessage.includes('quota') ||
-      errorMessage.includes('rate limit') ||
-      errorMessage.includes('429') ||
-      errorMessage.includes('resource_exhausted')
-    ) {
-      return new Response(
-        JSON.stringify({
-          error: 'RATE_LIMIT_EXCEEDED',
-          message:
-            'Free AI limit reached. Please try again later or upgrade to Pro.',
-          showPricing: true
-        }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      )
-    }
-
-    return new Response(
-      JSON.stringify({
-        error: 'INTERNAL_SERVER_ERROR',
-        message: 'Something went wrong. Please try again.'
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    )
+  } catch (error) {
+    return cleanError(error)
   }
 }
