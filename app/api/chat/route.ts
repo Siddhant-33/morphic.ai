@@ -19,7 +19,7 @@ import { isProviderEnabled } from '@/lib/utils/registry'
 export const maxDuration = 300
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-04-30'
+  apiVersion: '2026-04-22.dahlia'
 })
 
 function isGeminiQuotaError(err: unknown): boolean {
