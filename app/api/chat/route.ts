@@ -64,6 +64,7 @@ export async function POST(req: Request) {
 
   const body = await req.json()
 
+  // Handle Stripe Checkout Action
   if (body.action === 'create-checkout') {
     try {
       const session = await stripe.checkout.sessions.create({
@@ -103,7 +104,6 @@ export async function POST(req: Request) {
       `API Route - Start: chatId=${chatId}, trigger=${trigger}, isNewChat=${isNewChat}`
     )
 
-    // Handle different triggers using AI SDK standard values
     if (trigger === 'regenerate-message') {
       if (!messageId) {
         return new Response('messageId is required for regeneration', {
@@ -155,7 +155,6 @@ export async function POST(req: Request) {
 
     const cookieStore = await cookies()
 
-    // Get search mode from cookie
     const searchModeCookie = cookieStore.get('searchMode')?.value
     const searchMode: SearchMode =
       searchModeCookie && ['quick', 'adaptive', 'planning', 'image'].includes(searchModeCookie)
@@ -191,7 +190,6 @@ export async function POST(req: Request) {
       `createChatStreamResponse - Start: model=${selectedModel.providerId}:${selectedModel.id}, searchMode=${searchMode}`
     )
 
-    // Detect image generation request
     const latestMessage =
       message?.content ||
       (Array.isArray(messages)
@@ -209,7 +207,6 @@ export async function POST(req: Request) {
         latestMessage.toLowerCase().includes(keyword)
       )
 
-    // Force adaptive mode for image generation
     const finalSearchMode: SearchMode =
       isImageGenerationRequest
         ? 'adaptive'
