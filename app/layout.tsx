@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter as FontSans } from 'next/font/google'
+import Script from 'next/script'
 
 import { Analytics } from '@vercel/analytics/next'
 
@@ -99,6 +100,7 @@ export default async function RootLayout({
           <Toaster />
           <Analytics />
         </ThemeProvider>
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       </body>
     </html>
   )
