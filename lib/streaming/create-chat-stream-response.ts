@@ -225,11 +225,51 @@ export async function createChatStreamResponse(
     if (langfuse) {
       await langfuse.flushAsync()
     }
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message.toLowerCase()
+        : String(error).toLowerCase()
+
+    // Hide Gemini quota/rate-limit errors
+    if (
+      errorMessage.includes('quota') ||
+      errorMessage.includes('429') ||
+      errorMessage.includes('resource_exhausted') ||
+      errorMessage.includes('free_tier') ||
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('too many requests') ||
+      errorMessage.includes('exceeded your current quota') ||
+      errorMessage.includes('generate_content_free_tier_requests')
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: 'RATE_LIMIT',
+          message:
+            'You have reached your current limit, Upgrade your plan to continue.'
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+    }
+
     console.error('Stream execution error:', error)
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    return new Response(errorMessage, {
-      status: 500,
-      statusText: 'Internal Server Error'
-    })
+
+    return new Response(
+      JSON.stringify({
+        error: 'SERVER_ERROR',
+        message: 'Something went wrong. Please try again.'
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
   }
 }
