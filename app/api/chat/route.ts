@@ -1,6 +1,7 @@
 import { revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import Stripe from 'stripe'
 
 import { loadChat } from '@/lib/actions/chat'
 import { calculateConversationTurn, trackChatEvent } from '@/lib/analytics'
@@ -16,6 +17,10 @@ import { resetAllCounters } from '@/lib/utils/perf-tracking'
 import { isProviderEnabled } from '@/lib/utils/registry'
 
 export const maxDuration = 300
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-04-30'
+})
 
 function isGeminiQuotaError(err: unknown): boolean {
   const msg = String(err).toLowerCase()
@@ -57,13 +62,41 @@ export async function POST(req: Request) {
   const startTime = performance.now()
   const abortSignal = req.signal
 
+  const body = await req.json()
+
+  if (body.action === 'create-checkout') {
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [
+          {
+            price: body.priceId,
+            quantity: 1
+          }
+        ],
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`
+      })
+
+      return Response.json({
+        url: session.url
+      })
+    } catch (error) {
+      console.error(error)
+      return Response.json(
+        { error: 'Stripe checkout failed' },
+        { status: 500 }
+      )
+    }
+  }
+
   // Reset counters for new request (development only)
   if (process.env.ENABLE_PERF_LOGGING === 'true') {
     resetAllCounters()
   }
 
   try {
-    const body = await req.json()
     const { message, messages, chatId, trigger, messageId, isNewChat } = body
 
     perfLog(
@@ -166,18 +199,8 @@ export async function POST(req: Request) {
         : '')
 
     const imageKeywords = [
-      'generate image',
-      'create image',
-      'make image',
-      'draw',
-      'photo',
-      'picture',
-      'wallpaper',
-      'illustration',
-      'logo',
-      'art',
-      'anime',
-      'realistic image'
+      'generate image', 'create image', 'make image', 'draw', 'photo',
+      'picture', 'wallpaper', 'illustration', 'logo', 'art', 'anime', 'realistic image'
     ]
 
     const isImageGenerationRequest =
@@ -204,7 +227,7 @@ export async function POST(req: Request) {
           message,
           model: selectedModel,
           chatId,
-          userId: userId, // userId is guaranteed to be non-null after authentication check above
+          userId: userId,
           trigger,
           messageId,
           abortSignal,
@@ -214,17 +237,12 @@ export async function POST(req: Request) {
 
     perfTime('createChatStreamResponse resolved', streamStart)
 
-    // Track analytics event (non-blocking)
-    // Calculate conversation turn by loading chat history
     ;(async () => {
       try {
-        let conversationTurn = 1 // Default for new chats
-
-        // For existing chats, load history and calculate turn number
+        let conversationTurn = 1
         if (!isNewChat && !isGuest) {
           const chat = await loadChat(chatId, userId)
           if (chat?.messages) {
-            // Add 1 to account for the current message being sent
             conversationTurn = calculateConversationTurn(chat.messages) + 1
           }
         }
@@ -249,24 +267,16 @@ export async function POST(req: Request) {
           })
         }
       } catch (error) {
-        // Log error but don't throw - analytics should never break the app
         console.error('Analytics tracking failed:', error)
       }
     })()
 
-    // Invalidate the cache for this specific chat after creating the response
-    // This ensures the next load will get fresh data
     if (chatId && !isGuest) {
       revalidateTag(`chat-${chatId}`, 'max')
     }
 
     const totalTime = performance.now() - startTime
     perfLog(`Total API route time: ${totalTime.toFixed(2)}ms`)
-    perfLog(`=== Summary ===`)
-    perfLog(`Chat Type: ${isNewChat ? 'NEW' : 'EXISTING'}`)
-    perfLog(`Total Time: ${totalTime.toFixed(2)}ms`)
-    perfLog(`================`)
-
     return response
   } catch (error) {
     return cleanError(error)
