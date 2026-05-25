@@ -74,7 +74,12 @@ export async function POST(req: Request) {
     }
 
     if (isGuest) {
-      const guestLimitResponse = await checkAndEnforceGuestLimit()
+      const guestId =
+        req.headers.get('x-vercel-id') ||
+        req.headers.get('x-forwarded-for') ||
+        crypto.randomUUID()
+
+      const guestLimitResponse = await checkAndEnforceGuestLimit(guestId)
       if (guestLimitResponse) return guestLimitResponse
     }
 
@@ -230,20 +235,22 @@ export async function POST(req: Request) {
     console.error('API route error:', error)
 
     const errorMessage =
-      error?.message || 'Something went wrong. Please try again.'
+      typeof error?.message === 'string'
+        ? error.message.toLowerCase()
+        : ''
 
-    // Gemini quota exceeded
     if (
       errorMessage.includes('quota') ||
-      errorMessage.includes('429') ||
       errorMessage.includes('rate limit') ||
-      errorMessage.includes('generate_content_free_tier_requests')
+      errorMessage.includes('429') ||
+      errorMessage.includes('resource_exhausted')
     ) {
       return new Response(
         JSON.stringify({
-          error: 'FREE_LIMIT_REACHED',
+          error: 'RATE_LIMIT_EXCEEDED',
           message:
-            'Free plan limit reached. Upgrade to Pro for unlimited AI chats and image generation.'
+            'Free AI limit reached. Please try again later or upgrade to Pro.',
+          showPricing: true
         }),
         {
           status: 429,
@@ -256,8 +263,8 @@ export async function POST(req: Request) {
 
     return new Response(
       JSON.stringify({
-        error: 'SERVER_ERROR',
-        message: 'Something went wrong. Please try again later.'
+        error: 'INTERNAL_SERVER_ERROR',
+        message: 'Something went wrong. Please try again.'
       }),
       {
         status: 500,
