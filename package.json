@@ -17,6 +17,8 @@
     "chat": "bun run scripts/chat-cli.ts"  
   },  
   "dependencies": {  
+    "stripe": "^18.4.0",
+    "@stripe/stripe-js": "^7.6.1",
     "@ai-sdk/anthropic": "^3.0.68",  
     "@ai-sdk/gateway": "^3.0.95",  
     "@ai-sdk/google": "^3.0.61",  
