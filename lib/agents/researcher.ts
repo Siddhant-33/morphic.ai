@@ -89,6 +89,7 @@ export function createResearcher({
       tools,
       activeTools: activeToolsList,
       stopWhen: stepCountIs(maxSteps),
+      maxRetries: 0,
       experimental_telemetry: {
         isEnabled: isTracingEnabled(),
         functionId: 'research-agent',
