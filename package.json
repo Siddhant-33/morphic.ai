@@ -107,7 +107,6 @@
   },  
   "engines": {
     "node": "20.x",
-    "pnpm": "9.15.0",
     "bun": "1.2.12"
   },
   "packageManager": "pnpm@9.15.0"
