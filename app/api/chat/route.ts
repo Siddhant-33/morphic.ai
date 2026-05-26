@@ -58,13 +58,49 @@ function cleanError(err: unknown): NextResponse {
   )
 }
 
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json()
+
+    if (body.type !== 'stripe') {
+      return NextResponse.json(
+        { error: 'Invalid request' },
+        { status: 400 }
+      )
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: body.priceId,
+          quantity: 1
+        }
+      ],
+      success_url: `${req.headers.get('origin')}?success=true`,
+      cancel_url: `${req.headers.get('origin')}?canceled=true`
+    })
+
+    return NextResponse.json({
+      url: session.url
+    })
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json(
+      { error: 'Stripe checkout failed' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(req: Request) {
   const startTime = performance.now()
   const abortSignal = req.signal
 
   const body = await req.json()
 
-  // Handle Stripe Checkout Action
+  // Handle Stripe Checkout Action from existing configuration
   if (body.action === 'create-checkout') {
     try {
       const session = await stripe.checkout.sessions.create({
@@ -269,13 +305,3 @@ export async function POST(req: Request) {
     })()
 
     if (chatId && !isGuest) {
-      revalidateTag(`chat-${chatId}`, 'max')
-    }
-
-    const totalTime = performance.now() - startTime
-    perfLog(`Total API route time: ${totalTime.toFixed(2)}ms`)
-    return response
-  } catch (error) {
-    return cleanError(error)
-  }
-}
