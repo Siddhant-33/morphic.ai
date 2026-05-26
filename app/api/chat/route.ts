@@ -100,7 +100,6 @@ export async function POST(req: Request) {
 
   const body = await req.json()
 
-  // Handle Stripe Checkout Action from existing configuration
   if (body.action === 'create-checkout') {
     try {
       const session = await stripe.checkout.sessions.create({
@@ -128,7 +127,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Reset counters for new request (development only)
   if (process.env.ENABLE_PERF_LOGGING === 'true') {
     resetAllCounters()
   }
@@ -305,3 +303,11 @@ export async function POST(req: Request) {
     })()
 
     if (chatId && !isGuest) {
+      revalidateTag(chatId)
+    }
+
+    return response
+  } catch (error) {
+    return cleanError(error)
+  }
+}
