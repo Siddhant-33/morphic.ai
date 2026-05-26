@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-
+import React from 'react'
 import { AlertCircle, Clock, RefreshCw } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -38,7 +37,27 @@ export function ErrorModal({
     onAuthClose?.()
   }
 
-  const RAZORPAY_URL = 'https://pages.razorpay.com/pl_Qc7Jp123456789/view'
+  const handleStripeCheckout = async (priceId: string) => {
+    try {
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          priceId
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (error) {
+      console.error('Stripe checkout failed:', error)
+    }
+  }
 
   const getErrorIcon = () => {
     switch (error.type) {
@@ -123,10 +142,10 @@ export function ErrorModal({
           {error.type === 'auth' ? (
             <>
               <Button asChild className="w-full">
-                <Link href="/auth/sign-up">Sign Up</Link>
+                <a href="/auth/sign-up">Sign Up</a>
               </Button>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/auth/login">Sign In</Link>
+                <a href="/auth/login">Sign In</a>
               </Button>
             </>
           ) : (
@@ -150,8 +169,13 @@ export function ErrorModal({
                           </div>
                           <div className="text-lg font-bold text-white">₹499</div>
                         </div>
-                        <Button asChild className="mt-3 w-full rounded-xl bg-violet-600 hover:bg-violet-700">
-                          <Link href={RAZORPAY_URL} target="_blank">Upgrade to Pro</Link>
+                        <Button
+                          onClick={() =>
+                            handleStripeCheckout('price_1Tas9tQ1QDjx5aSViCvtsek6')
+                          }
+                          className="mt-3 w-full rounded-xl bg-violet-600 hover:bg-violet-700"
+                        >
+                          Upgrade to Pro
                         </Button>
                       </div>
                       <div className="rounded-xl border border-white/10 bg-black/40 p-3">
@@ -162,8 +186,14 @@ export function ErrorModal({
                           </div>
                           <div className="text-lg font-bold text-white">₹999</div>
                         </div>
-                        <Button asChild variant="secondary" className="mt-3 w-full rounded-xl">
-                          <Link href={RAZORPAY_URL} target="_blank">Get Ultra</Link>
+                        <Button
+                          variant="secondary"
+                          onClick={() =>
+                            handleStripeCheckout('price_1TasBOQ1QDjx5aSVRhtIDRlV')
+                          }
+                          className="mt-3 w-full rounded-xl"
+                        >
+                          Get Ultra
                         </Button>
                       </div>
                     </div>
