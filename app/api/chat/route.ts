@@ -22,6 +22,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil'
 })
 
+const STRIPE_PRICES = {
+  pro: 'price_1Tas9tQ1QDjx5aSViCvtsek6',
+  ultra: 'price_1TasBOQ1QDjx5aSVRhtIDRlV'
+}
+
 function isGeminiQuotaError(err: unknown): boolean {
   const msg = String(err).toLowerCase()
 
@@ -87,6 +92,7 @@ export async function PUT(req: Request) {
     })
   } catch (error) {
     console.error(error)
+
     return NextResponse.json(
       { error: 'Stripe checkout failed' },
       { status: 500 }
@@ -95,44 +101,68 @@ export async function PUT(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const startTime = performance.now()
   const abortSignal = req.signal
 
-  const body = await req.json()
-
-  if (body.action === 'create-checkout') {
-    try {
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        mode: 'subscription',
-        line_items: [
-          {
-            price: body.priceId,
-            quantity: 1
-          }
-        ],
-        success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
-        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`
-      })
-
-      return Response.json({
-        url: session.url
-      })
-    } catch (error) {
-      console.error(error)
-      return Response.json(
-        { error: 'Stripe checkout failed' },
-        { status: 500 }
-      )
-    }
-  }
-
-  if (process.env.ENABLE_PERF_LOGGING === 'true') {
-    resetAllCounters()
-  }
-
   try {
-    const { message, messages, chatId, trigger, messageId, isNewChat } = body
+    const body = await req.json()
+
+    if (body.action === 'create-checkout') {
+      try {
+        let selectedPriceId = body.priceId
+
+        if (body.plan === 'pro') {
+          selectedPriceId = STRIPE_PRICES.pro
+        }
+
+        if (body.plan === 'ultra') {
+          selectedPriceId = STRIPE_PRICES.ultra
+        }
+
+        if (!selectedPriceId) {
+          return NextResponse.json(
+            { error: 'Missing Stripe price ID' },
+            { status: 400 }
+          )
+        }
+
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          mode: 'subscription',
+          line_items: [
+            {
+              price: selectedPriceId,
+              quantity: 1
+            }
+          ],
+          success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
+          cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`
+        })
+
+        return NextResponse.json({
+          url: session.url
+        })
+      } catch (error) {
+        console.error('Stripe checkout error:', error)
+
+        return NextResponse.json(
+          { error: 'Stripe checkout failed' },
+          { status: 500 }
+        )
+      }
+    }
+
+    if (process.env.ENABLE_PERF_LOGGING === 'true') {
+      resetAllCounters()
+    }
+
+    const {
+      message,
+      messages,
+      chatId,
+      trigger,
+      messageId,
+      isNewChat
+    } = body
 
     perfLog(
       `API Route - Start: chatId=${chatId}, trigger=${trigger}, isNewChat=${isNewChat}`
@@ -170,6 +200,7 @@ export async function POST(req: Request) {
 
     const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
     const isGuest = !userId
+
     if (isGuest && !guestChatEnabled) {
       return new Response('Authentication required', {
         status: 401,
@@ -183,19 +214,30 @@ export async function POST(req: Request) {
         req.headers.get('x-forwarded-for') ||
         crypto.randomUUID()
 
-      const guestLimitResponse = await checkAndEnforceGuestLimit(guestId)
-      if (guestLimitResponse) return guestLimitResponse
+      const guestLimitResponse =
+        await checkAndEnforceGuestLimit(guestId)
+
+      if (guestLimitResponse) {
+        return guestLimitResponse
+      }
     }
 
     const cookieStore = await cookies()
 
     const searchModeCookie = cookieStore.get('searchMode')?.value
+
     const searchMode: SearchMode =
-      searchModeCookie && ['quick', 'adaptive', 'planning', 'image'].includes(searchModeCookie)
+      searchModeCookie &&
+      ['quick', 'adaptive', 'planning', 'image'].includes(
+        searchModeCookie
+      )
         ? (searchModeCookie as SearchMode)
         : 'quick'
 
-    const selectedModel = await selectModel({ searchMode, cookieStore })
+    const selectedModel = await selectModel({
+      searchMode,
+      cookieStore
+    })
 
     if (!selectedModel) {
       return new Response('No enabled model is available', {
@@ -215,11 +257,16 @@ export async function POST(req: Request) {
     }
 
     if (!isGuest) {
-      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId)
-      if (overallLimitResponse) return overallLimitResponse
+      const overallLimitResponse =
+        await checkAndEnforceOverallChatLimit(userId)
+
+      if (overallLimitResponse) {
+        return overallLimitResponse
+      }
     }
 
     const streamStart = performance.now()
+
     perfLog(
       `createChatStreamResponse - Start: model=${selectedModel.providerId}:${selectedModel.id}, searchMode=${searchMode}`
     )
@@ -231,8 +278,18 @@ export async function POST(req: Request) {
         : '')
 
     const imageKeywords = [
-      'generate image', 'create image', 'make image', 'draw', 'photo',
-      'picture', 'wallpaper', 'illustration', 'logo', 'art', 'anime', 'realistic image'
+      'generate image',
+      'create image',
+      'make image',
+      'draw',
+      'photo',
+      'picture',
+      'wallpaper',
+      'illustration',
+      'logo',
+      'art',
+      'anime',
+      'realistic image'
     ]
 
     const isImageGenerationRequest =
@@ -258,7 +315,7 @@ export async function POST(req: Request) {
           message,
           model: selectedModel,
           chatId,
-          userId: userId,
+          userId,
           trigger,
           messageId,
           abortSignal,
@@ -266,15 +323,21 @@ export async function POST(req: Request) {
           searchMode: finalSearchMode
         })
 
-    perfTime('createChatStreamResponse resolved', streamStart)
+    perfTime(
+      'createChatStreamResponse resolved',
+      streamStart
+    )
 
     ;(async () => {
       try {
         let conversationTurn = 1
+
         if (!isNewChat && !isGuest) {
           const chat = await loadChat(chatId, userId)
+
           if (chat?.messages) {
-            conversationTurn = calculateConversationTurn(chat.messages) + 1
+            conversationTurn =
+              calculateConversationTurn(chat.messages) + 1
           }
         }
 
@@ -286,11 +349,17 @@ export async function POST(req: Request) {
               searchMode === 'image'
                 ? 'adaptive'
                 : 'quick',
+
             conversationTurn,
+
             isNewChat: isNewChat ?? false,
+
             trigger:
-              (trigger as 'submit-message' | 'regenerate-message') ??
+              (trigger as
+                | 'submit-message'
+                | 'regenerate-message') ??
               'submit-message',
+
             chatId,
             userId,
             providerId: selectedModel.providerId,
@@ -298,7 +367,10 @@ export async function POST(req: Request) {
           })
         }
       } catch (error) {
-        console.error('Analytics tracking failed:', error)
+        console.error(
+          'Analytics tracking failed:',
+          error
+        )
       }
     })()
 
