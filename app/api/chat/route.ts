@@ -303,7 +303,7 @@ export async function POST(req: Request) {
     })()
 
     if (chatId && !isGuest) {
-      revalidateTag(chatId)
+      revalidateTag(chatId, 'max')
     }
 
     return response
