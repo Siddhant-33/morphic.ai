@@ -281,7 +281,7 @@ export default function UserMenu({
 
           <p className="text-xs leading-relaxed text-zinc-400">
             Morphic is an advanced AI-powered search and research platform
-            created by Siddhant Ray under Shironel. Our mission is to deliver
+            created by Siddhant Ray our work and use is to deliver
             intelligent, fast, accurate and modern AI experiences with
             multi-model reasoning, image generation, adaptive search,
             deep research and real-time web intelligence in one place.
