@@ -114,60 +114,65 @@ export async function PUT(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const startTime = performance.now()
   const abortSignal = req.signal
 
-  try {
-    const body = await req.json()
+  const userIdentifier =
+    req.headers.get('x-forwarded-for') ||
+    crypto.randomUUID()
 
-    if (body.action === 'create-checkout') {
-      try {
-        let selectedPriceId = body.priceId
+  const body = await req.json()
 
-        if (body.plan === 'pro') {
-          selectedPriceId = STRIPE_PRICES.pro
-        }
+  if (body.action === 'create-checkout') {
+    try {
+      let selectedPriceId = body.priceId
 
-        if (body.plan === 'ultra') {
-          selectedPriceId = STRIPE_PRICES.ultra
-        }
+      if (body.plan === 'pro') {
+        selectedPriceId = STRIPE_PRICES.pro
+      }
 
-        if (!selectedPriceId) {
-          return NextResponse.json(
-            { error: 'Missing Stripe price ID' },
-            { status: 400 }
-          )
-        }
+      if (body.plan === 'ultra') {
+        selectedPriceId = STRIPE_PRICES.ultra
+      }
 
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
-          mode: 'subscription',
-          line_items: [
-            {
-              price: selectedPriceId,
-              quantity: 1
-            }
-          ],
-          success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
-          cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`
-        })
-
-        return NextResponse.json({
-          url: session.url
-        })
-      } catch (error) {
-        console.error('Stripe checkout error:', error)
-
+      if (!selectedPriceId) {
         return NextResponse.json(
-          { error: 'Stripe checkout failed' },
-          { status: 500 }
+          { error: 'Missing Stripe price ID' },
+          { status: 400 }
         )
       }
-    }
 
-    if (process.env.ENABLE_PERF_LOGGING === 'true') {
-      resetAllCounters()
-    }
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [
+          {
+            price: selectedPriceId,
+            quantity: 1
+          }
+        ],
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`
+      })
 
+      return NextResponse.json({
+        url: session.url
+      })
+    } catch (error) {
+      console.error('Stripe checkout error:', error)
+
+      return NextResponse.json(
+        { error: 'Stripe checkout failed' },
+        { status: 500 }
+      )
+    }
+  }
+
+  if (process.env.ENABLE_PERF_LOGGING === 'true') {
+    resetAllCounters()
+  }
+
+  try {
     const { message, messages, chatId, trigger, messageId, isNewChat } = body
 
     perfLog(
@@ -204,12 +209,6 @@ export async function POST(req: Request) {
       })
     }
 
-    const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
-    const isGuest = !userId
-
-    const userIdentifier =
-      userId || req.headers.get('x-forwarded-for') || crypto.randomUUID()
-
     const existingLimit = await redis.get(`gemini-limit:${userIdentifier}`)
 
     if (existingLimit) {
@@ -223,6 +222,9 @@ export async function POST(req: Request) {
         { status: 429 }
       )
     }
+
+    const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
+    const isGuest = !userId
 
     if (isGuest && !guestChatEnabled) {
       return new Response('Authentication required', {
