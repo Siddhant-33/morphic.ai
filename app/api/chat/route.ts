@@ -2,6 +2,7 @@ import { revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { Redis } from '@upstash/redis'
 
 import { loadChat } from '@/lib/actions/chat'
 import { calculateConversationTurn, trackChatEvent } from '@/lib/analytics'
@@ -22,6 +23,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil'
 })
 
+const redis = Redis.fromEnv()
+
+const RATE_LIMIT_HOURS = 3
+const RATE_LIMIT_SECONDS = RATE_LIMIT_HOURS * 60 * 60
+
 const STRIPE_PRICES = {
   pro: 'price_1Tas9tQ1QDjx5aSViCvtsek6',
   ultra: 'price_1TasBOQ1QDjx5aSVRhtIDRlV'
@@ -40,15 +46,25 @@ function isGeminiQuotaError(err: unknown): boolean {
   )
 }
 
-function cleanError(err: unknown): NextResponse {
+async function cleanError(
+  err: unknown,
+  userIdentifier?: string
+): Promise<NextResponse> {
   console.error('[AI ERROR]', err)
 
   if (isGeminiQuotaError(err)) {
+    if (userIdentifier) {
+      await redis.set(`gemini-limit:${userIdentifier}`, Date.now(), {
+        ex: RATE_LIMIT_SECONDS
+      })
+    }
+
     return NextResponse.json(
       {
         error: 'RATE_LIMIT',
-        message: 'You have reached our free limit, Please contact the owner.',
-        showPricing: false
+        message:
+          'Rate limit reached. Upgrade your plan or wait 3 hours until your limit resets.',
+        showPricing: true
       },
       { status: 429 }
     )
@@ -68,10 +84,7 @@ export async function PUT(req: Request) {
     const body = await req.json()
 
     if (body.type !== 'stripe') {
-      return NextResponse.json(
-        { error: 'Invalid request' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -155,14 +168,7 @@ export async function POST(req: Request) {
       resetAllCounters()
     }
 
-    const {
-      message,
-      messages,
-      chatId,
-      trigger,
-      messageId,
-      isNewChat
-    } = body
+    const { message, messages, chatId, trigger, messageId, isNewChat } = body
 
     perfLog(
       `API Route - Start: chatId=${chatId}, trigger=${trigger}, isNewChat=${isNewChat}`
@@ -201,6 +207,23 @@ export async function POST(req: Request) {
     const guestChatEnabled = process.env.ENABLE_GUEST_CHAT === 'true'
     const isGuest = !userId
 
+    const userIdentifier =
+      userId || req.headers.get('x-forwarded-for') || crypto.randomUUID()
+
+    const existingLimit = await redis.get(`gemini-limit:${userIdentifier}`)
+
+    if (existingLimit) {
+      return NextResponse.json(
+        {
+          error: 'RATE_LIMIT',
+          message:
+            'Rate limit reached. Upgrade your plan or wait 3 hours until your limit resets.',
+          showPricing: true
+        },
+        { status: 429 }
+      )
+    }
+
     if (isGuest && !guestChatEnabled) {
       return new Response('Authentication required', {
         status: 401,
@@ -214,8 +237,7 @@ export async function POST(req: Request) {
         req.headers.get('x-forwarded-for') ||
         crypto.randomUUID()
 
-      const guestLimitResponse =
-        await checkAndEnforceGuestLimit(guestId)
+      const guestLimitResponse = await checkAndEnforceGuestLimit(guestId)
 
       if (guestLimitResponse) {
         return guestLimitResponse
@@ -228,9 +250,7 @@ export async function POST(req: Request) {
 
     const searchMode: SearchMode =
       searchModeCookie &&
-      ['quick', 'adaptive', 'planning', 'image'].includes(
-        searchModeCookie
-      )
+      ['quick', 'adaptive', 'planning', 'image'].includes(searchModeCookie)
         ? (searchModeCookie as SearchMode)
         : 'quick'
 
@@ -257,8 +277,7 @@ export async function POST(req: Request) {
     }
 
     if (!isGuest) {
-      const overallLimitResponse =
-        await checkAndEnforceOverallChatLimit(userId)
+      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId)
 
       if (overallLimitResponse) {
         return overallLimitResponse
@@ -298,10 +317,9 @@ export async function POST(req: Request) {
         latestMessage.toLowerCase().includes(keyword)
       )
 
-    const finalSearchMode: SearchMode =
-      isImageGenerationRequest
-        ? 'adaptive'
-        : searchMode
+    const finalSearchMode: SearchMode = isImageGenerationRequest
+      ? 'adaptive'
+      : searchMode
 
     const response = isGuest
       ? await createEphemeralChatStreamResponse({
@@ -323,10 +341,7 @@ export async function POST(req: Request) {
           searchMode: finalSearchMode
         })
 
-    perfTime(
-      'createChatStreamResponse resolved',
-      streamStart
-    )
+    perfTime('createChatStreamResponse resolved', streamStart)
 
     ;(async () => {
       try {
@@ -336,8 +351,7 @@ export async function POST(req: Request) {
           const chat = await loadChat(chatId, userId)
 
           if (chat?.messages) {
-            conversationTurn =
-              calculateConversationTurn(chat.messages) + 1
+            conversationTurn = calculateConversationTurn(chat.messages) + 1
           }
         }
 
@@ -355,9 +369,7 @@ export async function POST(req: Request) {
             isNewChat: isNewChat ?? false,
 
             trigger:
-              (trigger as
-                | 'submit-message'
-                | 'regenerate-message') ??
+              (trigger as 'submit-message' | 'regenerate-message') ??
               'submit-message',
 
             chatId,
@@ -367,10 +379,7 @@ export async function POST(req: Request) {
           })
         }
       } catch (error) {
-        console.error(
-          'Analytics tracking failed:',
-          error
-        )
+        console.error('Analytics tracking failed:', error)
       }
     })()
 
@@ -380,6 +389,6 @@ export async function POST(req: Request) {
 
     return response
   } catch (error) {
-    return cleanError(error)
+    return await cleanError(error, userIdentifier)
   }
 }
