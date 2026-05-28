@@ -5,8 +5,7 @@ import {
   Search,
   Brain,
   Sparkles,
-  ImageIcon,
-  Microscope
+  ImageIcon
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -16,33 +15,34 @@ type SearchMode =
   | 'adaptive'
   | 'research'
   | 'image'
-  | 'deep-research'
 
 const modes = [
   {
     id: 'quick' as SearchMode,
-    label: 'Search',
-    icon: Search
+    icon: Search,
+    glow:
+      'shadow-[0_0_18px_rgba(255,140,0,0.55)] text-orange-400'
   },
+
   {
     id: 'adaptive' as SearchMode,
-    label: 'Adaptive',
-    icon: Brain
+    icon: Brain,
+    glow:
+      'shadow-[0_0_18px_rgba(168,85,247,0.55)] text-violet-400'
   },
+
   {
     id: 'research' as SearchMode,
-    label: 'Analyze',
-    icon: Sparkles
+    icon: Sparkles,
+    glow:
+      'shadow-[0_0_18px_rgba(59,130,246,0.55)] text-blue-400'
   },
+
   {
     id: 'image' as SearchMode,
-    label: 'Image',
-    icon: ImageIcon
-  },
-  {
-    id: 'deep-research' as SearchMode,
-    label: 'Deep',
-    icon: Microscope
+    icon: ImageIcon,
+    glow:
+      'shadow-[0_0_18px_rgba(236,72,153,0.55)] text-pink-400'
   }
 ]
 
@@ -68,7 +68,7 @@ export function SearchModeSelector() {
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-full border border-zinc-800 bg-black/90 p-1 shadow-2xl backdrop-blur-xl">
+    <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/90 p-1 backdrop-blur-xl">
       {modes.map(mode => {
         const Icon = mode.icon
 
@@ -78,16 +78,15 @@ export function SearchModeSelector() {
           <button
             key={mode.id}
             type="button"
-            title={mode.label}
             onClick={() => handleModeChange(mode.id)}
             className={cn(
               'relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300',
               active
-                ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/30'
-                : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'
+                ? `bg-zinc-900 ${mode.glow} scale-105`
+                : 'text-zinc-500 hover:text-white hover:bg-zinc-900/70'
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            <Icon className="h-4 w-4" />
           </button>
         )
       })}
