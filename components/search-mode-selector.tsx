@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   Search,
   Brain,
-  Sparkles,
+  Microscope,
   ImageIcon
 } from 'lucide-react'
 
@@ -13,13 +13,14 @@ import { cn } from '@/lib/utils'
 type SearchMode =
   | 'quick'
   | 'adaptive'
-  | 'research'
+  | 'deep'
   | 'image'
 
 const modes = [
   {
     id: 'quick' as SearchMode,
     icon: Search,
+    placeholder: 'Search on Morphic...',
     glow:
       'shadow-[0_0_18px_rgba(255,140,0,0.55)] text-orange-400'
   },
@@ -27,20 +28,23 @@ const modes = [
   {
     id: 'adaptive' as SearchMode,
     icon: Brain,
+    placeholder: 'Adaptive thinking enabled...',
     glow:
       'shadow-[0_0_18px_rgba(168,85,247,0.55)] text-violet-400'
   },
 
   {
-    id: 'research' as SearchMode,
-    icon: Sparkles,
+    id: 'deep' as SearchMode,
+    icon: Microscope,
+    placeholder: 'Deep Research mode enabled...',
     glow:
-      'shadow-[0_0_18px_rgba(59,130,246,0.55)] text-blue-400'
+      'shadow-[0_0_18px_rgba(59,130,246,0.55)] text-cyan-400'
   },
 
   {
     id: 'image' as SearchMode,
     icon: ImageIcon,
+    placeholder: 'Generate an image of...',
     glow:
       'shadow-[0_0_18px_rgba(236,72,153,0.55)] text-pink-400'
   }
@@ -59,12 +63,28 @@ export function SearchModeSelector() {
     if (savedMode) {
       setSelectedMode(savedMode)
     }
+
+    updatePlaceholder(savedMode || 'quick')
   }, [])
+
+  const updatePlaceholder = (mode: SearchMode) => {
+    const input = document.querySelector(
+      'textarea'
+    ) as HTMLTextAreaElement | null
+
+    const selected = modes.find(m => m.id === mode)
+
+    if (input && selected) {
+      input.placeholder = selected.placeholder
+    }
+  }
 
   const handleModeChange = (mode: SearchMode) => {
     setSelectedMode(mode)
 
     document.cookie = `searchMode=${mode}; path=/; max-age=31536000`
+
+    updatePlaceholder(mode)
   }
 
   return (
