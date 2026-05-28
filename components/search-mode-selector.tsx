@@ -5,7 +5,8 @@ import {
   Search,
   Brain,
   Sparkles,
-  ImageIcon
+  ImageIcon,
+  Microscope
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -15,6 +16,7 @@ type SearchMode =
   | 'adaptive'
   | 'research'
   | 'image'
+  | 'deep-research'
 
 const modes = [
   {
@@ -29,13 +31,18 @@ const modes = [
   },
   {
     id: 'research' as SearchMode,
-    label: 'Research',
+    label: 'Analyze',
     icon: Sparkles
   },
   {
     id: 'image' as SearchMode,
     label: 'Image',
     icon: ImageIcon
+  },
+  {
+    id: 'deep-research' as SearchMode,
+    label: 'Deep',
+    icon: Microscope
   }
 ]
 
@@ -61,7 +68,7 @@ export function SearchModeSelector() {
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-full border border-border/50 bg-background/80 p-1 backdrop-blur-xl shadow-sm">
+    <div className="flex items-center gap-1 rounded-full border border-zinc-800 bg-black/90 p-1 shadow-2xl backdrop-blur-xl">
       {modes.map(mode => {
         const Icon = mode.icon
 
@@ -71,19 +78,16 @@ export function SearchModeSelector() {
           <button
             key={mode.id}
             type="button"
+            title={mode.label}
             onClick={() => handleModeChange(mode.id)}
             className={cn(
-              'relative flex items-center gap-2 rounded-full px-3 py-2 text-xs md:text-sm transition-all duration-300',
+              'relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300',
               active
-                ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/30'
+                : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
-
-            <span className="hidden md:block">
-              {mode.label}
-            </span>
           </button>
         )
       })}
